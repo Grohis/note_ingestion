@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Notes</title>
+</head>
+<body>
+
+<h2>Добавить заметку</h2>
+
+<input id="user" placeholder="user" value="grohis"><br><br>
+<input id="topic" placeholder="topic" value="work2"><br><br>
+
+<textarea id="text" rows="5" cols="40" placeholder="text"></textarea><br><br>
+
+<button onclick="save()">Save</button>
+
+<p id="result"></p>
+
+<script>
+  function save() {
+      const user = document.getElementById("user").value;
+      const topic = document.getElementById("topic").value;
+      const text = document.getElementById("text").value;
+
+      fetch("/notes", {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json",
+              "X-API-KEY": "123"
+          },
+          body: JSON.stringify({
+              user: user,
+              topic: topic,
+              text: text
+          })
+      })
+      .then(res => res.text())
+      .then(data => {
+          document.getElementById("result").innerText = data;
+      })
+      .catch(err => {
+          document.getElementById("result").innerText = "error";
+      });
+  }
+</script>
+
+</body>
+</html>
