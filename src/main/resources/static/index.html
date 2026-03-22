@@ -17,7 +17,7 @@
         #treeContainer li { cursor: pointer; margin: 3px 0; }
         #treeContainer li:hover { text-decoration: underline; }
 
-        /* Средняя колонка: содержимое заметки */
+        /* Средняя колонка: содержимое и редактирование */
         #noteContentContainer {
             flex: 1;
             display: flex;
@@ -217,7 +217,7 @@
     function startEdit() {
         let content = document.getElementById("noteContent").innerText;
 
-        // Убираем блоки метаданных YAML
+        // убираем блоки метаданных YAML
         const parts = content.split('---');
         if (parts.length > 2) {
             content = parts.slice(2).join('---').trim();
@@ -225,10 +225,15 @@
 
         document.getElementById("editText").value = content;
         document.getElementById("noteEditor").style.display = "flex";
+
+        // скрываем кнопку редактирования
+        document.getElementById("editBtn").style.display = "none";
     }
 
     function cancelEdit() {
         document.getElementById("noteEditor").style.display = "none";
+        // показываем кнопку редактирования снова
+        document.getElementById("editBtn").style.display = "inline-block";
     }
 
     function saveEdit() {
@@ -247,6 +252,10 @@
         .then(() => {
             document.getElementById("noteContent").innerText = updatedText;
             document.getElementById("noteEditor").style.display = "none";
+
+            // показываем кнопку редактирования снова
+            document.getElementById("editBtn").style.display = "inline-block";
+
             showToast();
             loadTopics();
         })
