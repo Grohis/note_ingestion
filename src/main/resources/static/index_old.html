@@ -1,70 +1,47 @@
 <!DOCTYPE html>
+//база
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Notes App</title>
+    <title>Notes</title>
     <style>
         body { font-family: sans-serif; margin: 20px; }
-        #container { display: flex; gap: 20px; }
-
-        /* Левая колонка: дерево топиков */
-        #treeContainer {
-            width: 250px;
-            border-right: 1px solid #ccc;
-            padding-right: 10px;
-        }
-        #treeContainer ul { list-style-type: none; padding-left: 20px; }
-        #treeContainer li { cursor: pointer; margin: 3px 0; }
-        #treeContainer li:hover { text-decoration: underline; }
-
-        /* Средняя колонка: содержимое заметки */
-        #noteContent {
-            flex: 1;
-            border: 1px solid #ccc;
-            padding: 10px;
-            min-height: 300px;
-            white-space: pre-wrap;
-        }
-
-        /* Правая колонка: форма добавления заметки */
-        #formContainer {
-            width: 300px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            display: none; /* по умолчанию скрыта */
-        }
-
+        #container { display: flex; gap: 40px; }
+        #tree { width: 200px; border-right: 1px solid #ccc; padding-right: 10px; }
+        #tree ul { list-style-type: none; padding-left: 20px; }
+        #tree li { cursor: pointer; margin: 3px 0; }
+        #tree li:hover { text-decoration: underline; }
+        #content { flex: 1; }
         #toast { display:none; background: lightgreen; padding:10px; margin-top:10px; }
-        button { margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<h2>Мои заметки</h2>
-<div id="container">
+<h2>Добавить заметку</h2>
+<!-- Поле user убрано, используем сессию/localStorage -->
+<input id="topic" list="topics" placeholder="Папка"><br><br>
+<input id="title" placeholder="Название"><br><br>
+<datalist id="topics"></datalist>
 
-    <!-- Левая колонка: дерево топиков -->
-    <div id="treeContainer">
-        <h3>Дерево топиков</h3>
-        <button onclick="showForm()">Добавить заметку ➕</button>
+<textarea id="text" rows="5" cols="40" placeholder="text"></textarea><br><br>
+<button onclick="save()">Save</button>
+
+<div id="toast">Сохранено ✅</div>
+
+<hr>
+
+<div id="container">
+    <!-- Слева дерево папок -->
+    <div id="tree">
+        <h3>Топики / заметки</h3>
         <ul id="treeList"></ul>
     </div>
 
-    <!-- Средняя колонка: содержимое выбранной заметки -->
-    <div id="noteContent">Выберите файл, чтобы увидеть заметку</div>
-
-    <!-- Правая колонка: форма добавления новой заметки -->
-    <div id="formContainer">
-        <h3>Добавить заметку</h3>
-        <input id="topic" list="topics" placeholder="topic"><br><br>
-        <input id="title" placeholder="title"><br><br>
-        <datalist id="topics"></datalist>
-        <textarea id="text" rows="10" cols="30" placeholder="text"></textarea><br><br>
-        <button onclick="save()">Сохранить</button>
-        <button onclick="hideForm()">Отмена</button>
-        <div id="toast">Сохранено ✅</div>
+    <!-- Справа содержимое -->
+    <div id="content">
+        <h3>Содержимое</h3>
+        <pre id="noteContent"></pre>
     </div>
-
 </div>
 
 <script>
@@ -74,11 +51,13 @@
     // === INIT ===
     window.onload = () => {
         user = localStorage.getItem("user");
+
         if (!user) {
             user = prompt("Введите имя пользователя:");
             localStorage.setItem("user", user);
         }
 
+        // Сохраняем пользователя в сессии на сервере
         fetch('/user/set?user=' + encodeURIComponent(user), { method: 'POST' })
             .then(r => r.text())
             .then(console.log);
@@ -86,26 +65,14 @@
         loadTopics();
     };
 
-    // === ПОКАЗАТЬ / СКРЫТЬ ФОРМУ ===
-    function showForm() {
-        document.getElementById("formContainer").style.display = "block";
-    }
-
-    function hideForm() {
-        document.getElementById("formContainer").style.display = "none";
-        document.getElementById("text").value = "";
-        document.getElementById("title").value = "";
-        document.getElementById("topic").value = "";
-    }
-
-    // === ПОКАЗАТЬ TOAST ===
+    // === SHOW TOAST ===
     function showToast() {
         const toast = document.getElementById("toast");
         toast.style.display = "block";
         setTimeout(() => toast.style.display = "none", 2000);
     }
 
-    // === СОХРАНЕНИЕ ЗАМЕТКИ ===
+    // === SAVE NOTE ===
     function save() {
         const topic = document.getElementById("topic").value;
         const title = document.getElementById("title").value;
@@ -118,38 +85,45 @@
 
         fetch("/notes", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "X-API-KEY": "123" },
+            headers: {
+                "Content-Type": "application/json",
+                "X-API-KEY": "123"
+            },
             body: JSON.stringify({ user, topic, title, text })
         })
         .then(res => res.text())
         .then(() => {
             showToast();
-            hideForm();
+            document.getElementById("text").value = "";
+            document.getElementById("title").value = "";
             loadTopics();
         })
         .catch(err => console.error(err));
     }
 
-    // === ЗАГРУЗКА ДЕРЕВА ТОПИКОВ + ФАЙЛЫ ===
+    // === LOAD TOPICS / TREE ===
     function loadTopics() {
         fetch('/notes/tree?user=' + user, { headers })
             .then(r => r.json())
             .then(tree => {
-                const treeList = document.getElementById("treeList");
-                treeList.innerHTML = "";
-
+                // Заполняем datalist для autocomplete
                 const datalist = document.getElementById("topics");
                 datalist.innerHTML = "";
-
-                Object.entries(tree).forEach(([topic, files]) => {
+                Object.keys(tree).forEach(topic => {
                     const option = document.createElement("option");
                     option.value = topic;
                     datalist.appendChild(option);
+                });
 
+                // Строим дерево папок
+                const treeList = document.getElementById("treeList");
+                treeList.innerHTML = "";
+
+                Object.entries(tree).forEach(([topic, files]) => {
                     const liTopic = document.createElement("li");
                     liTopic.textContent = topic;
-
                     const ulFiles = document.createElement("ul");
+
                     files.forEach(file => {
                         const liFile = document.createElement("li");
                         liFile.textContent = file;
@@ -163,7 +137,7 @@
             });
     }
 
-    // === ЗАГРУЗКА СОДЕРЖИМОГО ФАЙЛА ===
+    // === LOAD NOTE CONTENT ===
     function loadNote(topic, file) {
         fetch(`/notes/content?user=${user}&topic=${encodeURIComponent(topic)}&file=${encodeURIComponent(file)}`, { headers })
             .then(res => res.text())

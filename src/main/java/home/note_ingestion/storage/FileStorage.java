@@ -26,7 +26,8 @@ public class FileStorage {
             // 2. slug
             String slug = SlugUtil.toSlug(note.getTitle());
             if (slug.isEmpty()) {
-                slug = "note";
+                //slug = "note";
+                slug = note.getTitle();
             }
 
             // 3. имя файла
