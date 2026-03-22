@@ -39,7 +39,7 @@
             height: 250px;
         }
 
-        /* Модальное окно для добавления новой заметки */
+        /* Модальное окно для формы */
         #modal {
             display: none;
             position: fixed;
@@ -55,31 +55,8 @@
             border-radius: 6px;
         }
 
-        /* Модальное окно для подтверждения удаления */
-        #deleteModal {
-            display:none;
-            position:fixed; top:0; left:0; right:0; bottom:0;
-            background:rgba(0,0,0,0.5);
-            justify-content:center; align-items:center;
-        }
-        #deleteModal div {
-            background:white; padding:20px; border-radius:6px; width:300px;
-        }
-
-        /* Кнопки */
-        button { margin-top: 5px; }
-        #deleteBtn {
-            background-color: #e74c3c;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            cursor: pointer;
-            border-radius: 4px;
-            margin-left:5px;
-        }
-
-        /* Toast уведомление */
         #toast { display:none; background: lightgreen; padding:10px; margin-top:10px; }
+        button { margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -97,6 +74,7 @@
     <!-- Средняя колонка: содержимое и редактирование -->
     <div id="noteContentContainer">
         <h3>Содержимое заметки</h3>
+        <!-- Статический просмотр -->
         <pre id="noteContent">Выберите файл, чтобы увидеть заметку</pre>
 
         <!-- Редактор -->
@@ -106,14 +84,13 @@
             <button onclick="cancelEdit()">Отмена</button>
         </div>
 
-        <!-- Кнопки редактирования и удаления -->
+        <!-- Кнопка редактирования -->
         <button id="editBtn" style="display:none" onclick="startEdit()">Редактировать</button>
-        <button id="deleteBtn" style="display:none" onclick="deleteNote()">Удалить</button>
     </div>
 
 </div>
 
-<!-- Модальное окно добавления новой заметки -->
+<!-- Модальное окно для добавления новой заметки -->
 <div id="modal">
     <div id="modalContent">
         <h3>Добавить заметку</h3>
@@ -127,20 +104,11 @@
     </div>
 </div>
 
-<!-- Модальное окно подтверждения удаления -->
-<div id="deleteModal">
-    <div>
-        <p>Точно удалить? Введите "удалить" для подтверждения:</p>
-        <input id="deleteConfirmInput" type="text" placeholder="Введите 'удалить'">
-        <br><br>
-        <button onclick="confirmDelete()">Подтвердить</button>
-        <button onclick="hideDeleteModal()">Отмена</button>
-    </div>
-</div>
-
 <script>
     const headers = { "X-API-KEY": "123" };
     let user = null;
+
+    // Данные текущей заметки для редактирования
     let currentTopic = null;
     let currentFile = null;
 
@@ -159,7 +127,7 @@
         loadTopics();
     };
 
-    // === Модальные окна ===
+    // === МОДАЛЬНОЕ ОКНО ===
     function showModal() { document.getElementById("modal").style.display = "flex"; }
     function hideModal() {
         document.getElementById("modal").style.display = "none";
@@ -167,19 +135,15 @@
         document.getElementById("title").value = "";
         document.getElementById("text").value = "";
     }
-    function hideDeleteModal() {
-        document.getElementById("deleteModal").style.display = "none";
-        document.getElementById("deleteConfirmInput").value = "";
-    }
 
-    // === Toast ===
+    // === TOAST ===
     function showToast() {
         const toast = document.getElementById("toast");
         toast.style.display = "block";
         setTimeout(() => toast.style.display = "none", 2000);
     }
 
-    // === Сохранение новой заметки ===
+    // === СОХРАНЕНИЕ НОВОЙ ЗАМЕТКИ ===
     function save() {
         const topic = document.getElementById("topic").value;
         const title = document.getElementById("title").value;
@@ -201,7 +165,7 @@
         .catch(err => console.error(err));
     }
 
-    // === Загрузка дерева топиков + файлов ===
+    // === ЗАГРУЗКА ДЕРЕВА ТОПИКОВ + ФАЙЛЫ ===
     function loadTopics() {
         fetch('/notes/tree?user=' + user, { headers })
             .then(r => r.json())
@@ -234,7 +198,7 @@
             });
     }
 
-    // === Загрузка содержимого файла ===
+    // === ЗАГРУЗКА СОДЕРЖИМОГО ФАЙЛА ===
     function loadNote(topic, file) {
         fetch(`/notes/content?user=${user}&topic=${encodeURIComponent(topic)}&file=${encodeURIComponent(file)}`, { headers })
             .then(res => res.text())
@@ -244,77 +208,54 @@
                 currentFile = file;
 
                 document.getElementById("editBtn").style.display = "inline-block";
-                document.getElementById("deleteBtn").style.display = "inline-block";
                 document.getElementById("noteEditor").style.display = "none";
             })
             .catch(err => console.error(err));
     }
 
     // === РЕДАКТИРОВАНИЕ ===
-function startEdit() {
-    const content = document.getElementById("noteContent").innerText;
+    function startEdit() {
+        let content = document.getElementById("noteContent").innerText;
 
-    // убираем metadata (всё до первого пустого ряда после "---")
-    const parts = content.split("\n---\n");
-    let textOnly = content;
-    if (parts.length >= 2) {
-        // после второго "---" идет текст
-        textOnly = parts.slice(1).join("\n---\n").trim();
+        // убираем блоки метаданных YAML
+        const parts = content.split('---');
+        if (parts.length > 2) {
+            content = parts.slice(2).join('---').trim();
+        }
+
+        document.getElementById("editText").value = content;
+        document.getElementById("noteEditor").style.display = "flex";
+
+        // скрываем кнопку редактирования
+        document.getElementById("editBtn").style.display = "none";
     }
 
-    document.getElementById("editText").value = textOnly;
-    document.getElementById("noteEditor").style.display = "flex";
-
-    // скрываем кнопки редактирования и удаления
-    document.getElementById("editBtn").style.display = "none";
-    document.getElementById("deleteBtn").style.display = "none";
-}
-
-function saveEdit() {
-    const updatedText = document.getElementById("editText").value;
-    if (!updatedText) { alert("Текст заметки пустой!"); return; }
-
-    fetch(`/notes/update?user=${user}&topic=${encodeURIComponent(currentTopic)}&file=${encodeURIComponent(currentFile)}`, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain", "X-API-KEY": "123" },
-        body: updatedText
-    })
-    .then(res => res.text())
-    .then(() => {
-        // при отображении добавляем старый metadata обратно
-        const content = document.getElementById("noteContent").innerText;
-        const metaMatch = content.match(/^---[\s\S]*?---/);
-        let meta = metaMatch ? metaMatch[0] + "\n\n" : "";
-        document.getElementById("noteContent").innerText = meta + updatedText;
-
+    function cancelEdit() {
         document.getElementById("noteEditor").style.display = "none";
+        // показываем кнопку редактирования снова
         document.getElementById("editBtn").style.display = "inline-block";
-        document.getElementById("deleteBtn").style.display = "inline-block";
-
-        showToast();
-        loadTopics();
-    })
-    .catch(err => console.error(err));
-}
-
-    // === Удаление ===
-    function deleteNote() {
-        document.getElementById("deleteModal").style.display = "flex";
     }
-    function confirmDelete() {
-        const val = document.getElementById("deleteConfirmInput").value.trim();
-        if (val.toLowerCase() !== "удалить") { alert("Неверно! Введите 'удалить'"); return; }
 
-        fetch(`/notes/delete?user=${user}&topic=${encodeURIComponent(currentTopic)}&file=${encodeURIComponent(currentFile)}`, {
-            method: "DELETE",
-            headers: headers
+    function saveEdit() {
+        const updatedText = document.getElementById("editText").value;
+        if (!updatedText) {
+            alert("Текст заметки пустой!");
+            return;
+        }
+
+        fetch(`/notes/update?user=${user}&topic=${encodeURIComponent(currentTopic)}&file=${encodeURIComponent(currentFile)}`, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain", "X-API-KEY": "123" },
+            body: updatedText
         })
         .then(res => res.text())
         .then(() => {
-            document.getElementById("noteContent").innerText = "Выберите файл, чтобы увидеть заметку";
-            document.getElementById("editBtn").style.display = "none";
-            document.getElementById("deleteBtn").style.display = "none";
-            hideDeleteModal();
+            document.getElementById("noteContent").innerText = updatedText;
+            document.getElementById("noteEditor").style.display = "none";
+
+            // показываем кнопку редактирования снова
+            document.getElementById("editBtn").style.display = "inline-block";
+
             showToast();
             loadTopics();
         })

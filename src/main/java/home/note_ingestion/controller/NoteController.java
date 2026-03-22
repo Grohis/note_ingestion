@@ -49,4 +49,14 @@ public class NoteController {
         service.update(user, topic, file, newText);
         return "updated";
     }
+
+    @DeleteMapping("/delete")
+    public String deleteNote(
+            @RequestParam String user,
+            @RequestParam String topic,
+            @RequestParam String file
+    ) {
+        service.delete(user, topic, file);
+        return "deleted";
+    }
 }

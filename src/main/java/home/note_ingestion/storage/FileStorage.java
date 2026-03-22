@@ -153,4 +153,18 @@ public class FileStorage {
             throw new RuntimeException(e);
         }
     }
+
+    public void delete(String user, String topic, String fileName) {
+        Path file = root.resolve(user).resolve(topic).resolve(fileName);
+
+        try {
+            if (!Files.exists(file)) {
+                throw new RuntimeException("file not found");
+            }
+            Files.delete(file);
+            System.out.println("Файл удалён: " + file.toAbsolutePath());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

@@ -75,4 +75,11 @@ public class NoteService {
         }
         storage.update(user, topic, fileName, newText);
     }
+
+    public void delete(String user, String topic, String fileName) {
+        if (user == null || topic == null || fileName == null) {
+            throw new RuntimeException("params required");
+        }
+        storage.delete(user, topic, fileName);
+    }
 }
