@@ -119,26 +119,36 @@ public class FileStorage {
                 throw new RuntimeException("file not found");
             }
 
-            // Читаем заголовок из существующего файла (если нужно, можно оставить)
-            String content = Files.readString(file);
+            // Читаем старый файл
+            String content = Files.readString(file, StandardCharsets.UTF_8);
+
+            // Извлекаем существующий заголовок (title и topic)
             String[] parts = content.split("---", 3);
             String header = parts.length > 2 ? parts[1] : "";
+
             String titleLine = header.lines()
                     .filter(l -> l.startsWith("title:"))
                     .findFirst()
                     .orElse("title: " + fileName.replace(".md",""));
 
+            String topicLine = header.lines()
+                    .filter(l -> l.startsWith("topic:"))
+                    .findFirst()
+                    .orElse("topic: " + topic);
+
+            // Формируем новый контент с новым текстом и новым created
             String newContent = """
-                ---
-                %s
-                topic: %s
-                created: %s
-                ---
-                
-                %s
-                """.formatted(titleLine, topic, LocalDateTime.now(), newText);
+                    ---
+                    %s
+                    %s
+                    created: %s
+                    ---
+                    
+                    %s
+                    """.formatted(titleLine, topicLine, LocalDateTime.now(), newText);
 
             Files.writeString(file, newContent, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -207,9 +207,7 @@
                 currentTopic = topic;
                 currentFile = file;
 
-                // показать кнопку редактирования
                 document.getElementById("editBtn").style.display = "inline-block";
-                // скрыть редактор если был открыт
                 document.getElementById("noteEditor").style.display = "none";
             })
             .catch(err => console.error(err));
@@ -217,7 +215,14 @@
 
     // === РЕДАКТИРОВАНИЕ ===
     function startEdit() {
-        const content = document.getElementById("noteContent").innerText;
+        let content = document.getElementById("noteContent").innerText;
+
+        // Убираем блоки метаданных YAML
+        const parts = content.split('---');
+        if (parts.length > 2) {
+            content = parts.slice(2).join('---').trim();
+        }
+
         document.getElementById("editText").value = content;
         document.getElementById("noteEditor").style.display = "flex";
     }
@@ -227,23 +232,26 @@
     }
 
     function saveEdit() {
-    const updatedText = document.getElementById("editText").value;
-    if (!updatedText) { alert("Текст заметки пустой!"); return; }
+        const updatedText = document.getElementById("editText").value;
+        if (!updatedText) {
+            alert("Текст заметки пустой!");
+            return;
+        }
 
-    fetch(`/notes/update?user=${user}&topic=${encodeURIComponent(currentTopic)}&file=${encodeURIComponent(currentFile)}`, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain", "X-API-KEY": "123" },
-        body: updatedText
-    })
-    .then(res => res.text())
-    .then(() => {
-        document.getElementById("noteContent").innerText = updatedText;
-        document.getElementById("noteEditor").style.display = "none";
-        showToast();
-        loadTopics(); // обновляем дерево без изменения имени файла
-    })
-    .catch(err => console.error(err));
-}
+        fetch(`/notes/update?user=${user}&topic=${encodeURIComponent(currentTopic)}&file=${encodeURIComponent(currentFile)}`, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain", "X-API-KEY": "123" },
+            body: updatedText
+        })
+        .then(res => res.text())
+        .then(() => {
+            document.getElementById("noteContent").innerText = updatedText;
+            document.getElementById("noteEditor").style.display = "none";
+            showToast();
+            loadTopics();
+        })
+        .catch(err => console.error(err));
+    }
 </script>
 
 </body>
