@@ -1,48 +1,150 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Notes</title>
+    <meta charset="UTF-8">
+    <title>Notes</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #container { display: flex; gap: 40px; }
+        #tree { width: 200px; border-right: 1px solid #ccc; padding-right: 10px; }
+        #tree ul { list-style-type: none; padding-left: 20px; }
+        #tree li { cursor: pointer; margin: 3px 0; }
+        #tree li:hover { text-decoration: underline; }
+        #content { flex: 1; }
+        #toast { display:none; background: lightgreen; padding:10px; margin-top:10px; }
+    </style>
 </head>
 <body>
 
 <h2>Добавить заметку</h2>
-
-<input id="user" placeholder="user" value="grohis"><br><br>
-<input id="topic" placeholder="topic" value="work2"><br><br>
+<!-- Поле user убрано, используем сессию/localStorage -->
+<input id="topic" list="topics" placeholder="topic"><br><br>
+<input id="title" placeholder="title"><br><br>
+<datalist id="topics"></datalist>
 
 <textarea id="text" rows="5" cols="40" placeholder="text"></textarea><br><br>
-
 <button onclick="save()">Save</button>
 
-<p id="result"></p>
+<div id="toast">Сохранено ✅</div>
+
+<hr>
+
+<div id="container">
+    <!-- Слева дерево папок -->
+    <div id="tree">
+        <h3>Топики / заметки</h3>
+        <ul id="treeList"></ul>
+    </div>
+
+    <!-- Справа содержимое -->
+    <div id="content">
+        <h3>Содержимое</h3>
+        <pre id="noteContent"></pre>
+    </div>
+</div>
 
 <script>
-  function save() {
-      const user = document.getElementById("user").value;
-      const topic = document.getElementById("topic").value;
-      const text = document.getElementById("text").value;
+    const headers = { "X-API-KEY": "123" };
+    let user = null;
 
-      fetch("/notes", {
-          method: "POST",
-          headers: {
-              "Content-Type": "application/json",
-              "X-API-KEY": "123"
-          },
-          body: JSON.stringify({
-              user: user,
-              topic: topic,
-              text: text
-          })
-      })
-      .then(res => res.text())
-      .then(data => {
-          document.getElementById("result").innerText = data;
-      })
-      .catch(err => {
-          document.getElementById("result").innerText = "error";
-      });
-  }
+    // === INIT ===
+    window.onload = () => {
+        user = localStorage.getItem("user");
+
+        if (!user) {
+            user = prompt("Введите имя пользователя:");
+            localStorage.setItem("user", user);
+        }
+
+        // Сохраняем пользователя в сессии на сервере
+        fetch('/user/set?user=' + encodeURIComponent(user), { method: 'POST' })
+            .then(r => r.text())
+            .then(console.log);
+
+        loadTopics();
+    };
+
+    // === SHOW TOAST ===
+    function showToast() {
+        const toast = document.getElementById("toast");
+        toast.style.display = "block";
+        setTimeout(() => toast.style.display = "none", 2000);
+    }
+
+    // === SAVE NOTE ===
+    function save() {
+        const topic = document.getElementById("topic").value;
+        const title = document.getElementById("title").value;
+        const text = document.getElementById("text").value;
+
+        if (!topic || !title || !text) {
+            alert("Все поля должны быть заполнены!");
+            return;
+        }
+
+        fetch("/notes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-API-KEY": "123"
+            },
+            body: JSON.stringify({ user, topic, title, text })
+        })
+        .then(res => res.text())
+        .then(() => {
+            showToast();
+            document.getElementById("text").value = "";
+            document.getElementById("title").value = "";
+            loadTopics();
+        })
+        .catch(err => console.error(err));
+    }
+
+    // === LOAD TOPICS / TREE ===
+    function loadTopics() {
+        fetch('/notes/tree?user=' + user, { headers })
+            .then(r => r.json())
+            .then(tree => {
+                // Заполняем datalist для autocomplete
+                const datalist = document.getElementById("topics");
+                datalist.innerHTML = "";
+                Object.keys(tree).forEach(topic => {
+                    const option = document.createElement("option");
+                    option.value = topic;
+                    datalist.appendChild(option);
+                });
+
+                // Строим дерево папок
+                const treeList = document.getElementById("treeList");
+                treeList.innerHTML = "";
+
+                Object.entries(tree).forEach(([topic, files]) => {
+                    const liTopic = document.createElement("li");
+                    liTopic.textContent = topic;
+                    const ulFiles = document.createElement("ul");
+
+                    files.forEach(file => {
+                        const liFile = document.createElement("li");
+                        liFile.textContent = file;
+                        liFile.onclick = () => loadNote(topic, file);
+                        ulFiles.appendChild(liFile);
+                    });
+
+                    liTopic.appendChild(ulFiles);
+                    treeList.appendChild(liTopic);
+                });
+            });
+    }
+
+    // === LOAD NOTE CONTENT ===
+    function loadNote(topic, file) {
+        fetch(`/notes/content?user=${user}&topic=${encodeURIComponent(topic)}&file=${encodeURIComponent(file)}`, { headers })
+            .then(res => res.text())
+            .then(text => {
+                document.getElementById("noteContent").innerText = text;
+            })
+            .catch(err => console.error(err));
+    }
 </script>
 
 </body>
