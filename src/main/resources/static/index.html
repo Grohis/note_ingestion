@@ -1,48 +1,266 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Notes</title>
+    <meta charset="UTF-8">
+    <title>Notes App</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #container { display: flex; gap: 20px; }
+
+        /* Левая колонка: дерево топиков */
+        #treeContainer {
+            width: 250px;
+            border-right: 1px solid #ccc;
+            padding-right: 10px;
+        }
+        #treeContainer ul { list-style-type: none; padding-left: 20px; }
+        #treeContainer li { cursor: pointer; margin: 3px 0; }
+        #treeContainer li:hover { text-decoration: underline; }
+
+        /* Средняя колонка: содержимое и редактирование */
+        #noteContentContainer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #noteContent {
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 300px;
+            white-space: pre-wrap;
+            overflow: auto;
+        }
+        #noteEditor {
+            display: none;
+            flex-direction: column;
+        }
+        #noteEditor textarea {
+            width: 100%;
+            height: 250px;
+        }
+
+        /* Модальное окно для формы */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        #modalContent {
+            background: white;
+            padding: 20px;
+            width: 400px;
+            border-radius: 6px;
+        }
+
+        #toast { display:none; background: lightgreen; padding:10px; margin-top:10px; }
+        button { margin-top: 5px; }
+    </style>
 </head>
 <body>
 
-<h2>Добавить заметку</h2>
+<h2>Мои заметки</h2>
+<div id="container">
 
-<input id="user" placeholder="user" value="grohis"><br><br>
-<input id="topic" placeholder="topic" value="work2"><br><br>
+    <!-- Левая колонка: дерево топиков -->
+    <div id="treeContainer">
+        <h3>Дерево топиков</h3>
+        <button onclick="showModal()">Добавить заметку ➕</button>
+        <ul id="treeList"></ul>
+    </div>
 
-<textarea id="text" rows="5" cols="40" placeholder="text"></textarea><br><br>
+    <!-- Средняя колонка: содержимое и редактирование -->
+    <div id="noteContentContainer">
+        <h3>Содержимое заметки</h3>
+        <!-- Статический просмотр -->
+        <pre id="noteContent">Выберите файл, чтобы увидеть заметку</pre>
 
-<button onclick="save()">Save</button>
+        <!-- Редактор -->
+        <div id="noteEditor">
+            <textarea id="editText"></textarea>
+            <button onclick="saveEdit()">Сохранить изменения</button>
+            <button onclick="cancelEdit()">Отмена</button>
+        </div>
 
-<p id="result"></p>
+        <!-- Кнопка редактирования -->
+        <button id="editBtn" style="display:none" onclick="startEdit()">Редактировать</button>
+    </div>
+
+</div>
+
+<!-- Модальное окно для добавления новой заметки -->
+<div id="modal">
+    <div id="modalContent">
+        <h3>Добавить заметку</h3>
+        <input id="topic" list="topics" placeholder="topic"><br><br>
+        <input id="title" placeholder="title"><br><br>
+        <datalist id="topics"></datalist>
+        <textarea id="text" rows="5" cols="40" placeholder="text"></textarea><br><br>
+        <button onclick="save()">Сохранить</button>
+        <button onclick="hideModal()">Отмена</button>
+        <div id="toast">Сохранено ✅</div>
+    </div>
+</div>
 
 <script>
-  function save() {
-      const user = document.getElementById("user").value;
-      const topic = document.getElementById("topic").value;
-      const text = document.getElementById("text").value;
+    const headers = { "X-API-KEY": "123" };
+    let user = null;
 
-      fetch("/notes", {
-          method: "POST",
-          headers: {
-              "Content-Type": "application/json",
-              "X-API-KEY": "123"
-          },
-          body: JSON.stringify({
-              user: user,
-              topic: topic,
-              text: text
-          })
-      })
-      .then(res => res.text())
-      .then(data => {
-          document.getElementById("result").innerText = data;
-      })
-      .catch(err => {
-          document.getElementById("result").innerText = "error";
-      });
-  }
+    // Данные текущей заметки для редактирования
+    let currentTopic = null;
+    let currentFile = null;
+
+    // === INIT ===
+    window.onload = () => {
+        user = localStorage.getItem("user");
+        if (!user) {
+            user = prompt("Введите имя пользователя:");
+            localStorage.setItem("user", user);
+        }
+
+        fetch('/user/set?user=' + encodeURIComponent(user), { method: 'POST' })
+            .then(r => r.text())
+            .then(console.log);
+
+        loadTopics();
+    };
+
+    // === МОДАЛЬНОЕ ОКНО ===
+    function showModal() { document.getElementById("modal").style.display = "flex"; }
+    function hideModal() {
+        document.getElementById("modal").style.display = "none";
+        document.getElementById("topic").value = "";
+        document.getElementById("title").value = "";
+        document.getElementById("text").value = "";
+    }
+
+    // === TOAST ===
+    function showToast() {
+        const toast = document.getElementById("toast");
+        toast.style.display = "block";
+        setTimeout(() => toast.style.display = "none", 2000);
+    }
+
+    // === СОХРАНЕНИЕ НОВОЙ ЗАМЕТКИ ===
+    function save() {
+        const topic = document.getElementById("topic").value;
+        const title = document.getElementById("title").value;
+        const text = document.getElementById("text").value;
+
+        if (!topic || !title || !text) { alert("Все поля должны быть заполнены!"); return; }
+
+        fetch("/notes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-API-KEY": "123" },
+            body: JSON.stringify({ user, topic, title, text })
+        })
+        .then(res => res.text())
+        .then(() => {
+            showToast();
+            hideModal();
+            loadTopics();
+        })
+        .catch(err => console.error(err));
+    }
+
+    // === ЗАГРУЗКА ДЕРЕВА ТОПИКОВ + ФАЙЛЫ ===
+    function loadTopics() {
+        fetch('/notes/tree?user=' + user, { headers })
+            .then(r => r.json())
+            .then(tree => {
+                const treeList = document.getElementById("treeList");
+                treeList.innerHTML = "";
+
+                const datalist = document.getElementById("topics");
+                datalist.innerHTML = "";
+
+                Object.entries(tree).forEach(([topic, files]) => {
+                    const option = document.createElement("option");
+                    option.value = topic;
+                    datalist.appendChild(option);
+
+                    const liTopic = document.createElement("li");
+                    liTopic.textContent = topic;
+
+                    const ulFiles = document.createElement("ul");
+                    files.forEach(file => {
+                        const liFile = document.createElement("li");
+                        liFile.textContent = file;
+                        liFile.onclick = () => loadNote(topic, file);
+                        ulFiles.appendChild(liFile);
+                    });
+
+                    liTopic.appendChild(ulFiles);
+                    treeList.appendChild(liTopic);
+                });
+            });
+    }
+
+    // === ЗАГРУЗКА СОДЕРЖИМОГО ФАЙЛА ===
+    function loadNote(topic, file) {
+        fetch(`/notes/content?user=${user}&topic=${encodeURIComponent(topic)}&file=${encodeURIComponent(file)}`, { headers })
+            .then(res => res.text())
+            .then(text => {
+                document.getElementById("noteContent").innerText = text;
+                currentTopic = topic;
+                currentFile = file;
+
+                document.getElementById("editBtn").style.display = "inline-block";
+                document.getElementById("noteEditor").style.display = "none";
+            })
+            .catch(err => console.error(err));
+    }
+
+    // === РЕДАКТИРОВАНИЕ ===
+    function startEdit() {
+        let content = document.getElementById("noteContent").innerText;
+
+        // убираем блоки метаданных YAML
+        const parts = content.split('---');
+        if (parts.length > 2) {
+            content = parts.slice(2).join('---').trim();
+        }
+
+        document.getElementById("editText").value = content;
+        document.getElementById("noteEditor").style.display = "flex";
+
+        // скрываем кнопку редактирования
+        document.getElementById("editBtn").style.display = "none";
+    }
+
+    function cancelEdit() {
+        document.getElementById("noteEditor").style.display = "none";
+        // показываем кнопку редактирования снова
+        document.getElementById("editBtn").style.display = "inline-block";
+    }
+
+    function saveEdit() {
+        const updatedText = document.getElementById("editText").value;
+        if (!updatedText) {
+            alert("Текст заметки пустой!");
+            return;
+        }
+
+        fetch(`/notes/update?user=${user}&topic=${encodeURIComponent(currentTopic)}&file=${encodeURIComponent(currentFile)}`, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain", "X-API-KEY": "123" },
+            body: updatedText
+        })
+        .then(res => res.text())
+        .then(() => {
+            document.getElementById("noteContent").innerText = updatedText;
+            document.getElementById("noteEditor").style.display = "none";
+
+            // показываем кнопку редактирования снова
+            document.getElementById("editBtn").style.display = "inline-block";
+
+            showToast();
+            loadTopics();
+        })
+        .catch(err => console.error(err));
+    }
 </script>
 
 </body>

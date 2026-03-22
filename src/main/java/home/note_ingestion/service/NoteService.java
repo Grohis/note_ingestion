@@ -4,6 +4,10 @@ import home.note_ingestion.model.Note;
 import home.note_ingestion.storage.FileStorage;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @Service
@@ -46,5 +50,29 @@ public class NoteService {
         }
 
         return storage.read(user, topic, fileName);
+    }
+
+    public List<String> listTopics(String user) {
+        try {
+            Path userDir = Paths.get("data").resolve(user);
+            if (!Files.exists(userDir)) return List.of();
+
+            try (var stream = Files.list(userDir)) {
+                return stream
+                        .filter(Files::isDirectory)
+                        .map(path -> path.getFileName().toString())
+                        .sorted()
+                        .toList();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void update(String user, String topic, String fileName, String newText) {
+        if (user == null || topic == null || fileName == null || newText == null) {
+            throw new RuntimeException("params required");
+        }
+        storage.update(user, topic, fileName, newText);
     }
 }

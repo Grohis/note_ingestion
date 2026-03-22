@@ -38,4 +38,15 @@ public class NoteController {
     ) {
         return service.read(user, topic, file);
     }
+
+    @PostMapping("/update")
+    public String updateNote(
+            @RequestParam String user,
+            @RequestParam String topic,
+            @RequestParam String file,
+            @RequestBody String newText
+    ) {
+        service.update(user, topic, file, newText);
+        return "updated";
+    }
 }
