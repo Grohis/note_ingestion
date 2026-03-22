@@ -68,4 +68,11 @@ public class NoteService {
             throw new RuntimeException(e);
         }
     }
+
+    public void update(String user, String topic, String fileName, String newText) {
+        if (user == null || topic == null || fileName == null || newText == null) {
+            throw new RuntimeException("params required");
+        }
+        storage.update(user, topic, fileName, newText);
+    }
 }

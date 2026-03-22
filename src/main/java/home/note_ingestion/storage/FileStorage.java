@@ -111,4 +111,36 @@ public class FileStorage {
             throw new RuntimeException(e);
         }
     }
+
+    public void update(String user, String topic, String fileName, String newText) {
+        try {
+            Path file = root.resolve(user).resolve(topic).resolve(fileName);
+            if (!Files.exists(file)) {
+                throw new RuntimeException("file not found");
+            }
+
+            // Читаем заголовок из существующего файла (если нужно, можно оставить)
+            String content = Files.readString(file);
+            String[] parts = content.split("---", 3);
+            String header = parts.length > 2 ? parts[1] : "";
+            String titleLine = header.lines()
+                    .filter(l -> l.startsWith("title:"))
+                    .findFirst()
+                    .orElse("title: " + fileName.replace(".md",""));
+
+            String newContent = """
+                ---
+                %s
+                topic: %s
+                created: %s
+                ---
+                
+                %s
+                """.formatted(titleLine, topic, LocalDateTime.now(), newText);
+
+            Files.writeString(file, newContent, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
