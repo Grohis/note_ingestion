@@ -155,16 +155,39 @@ public class FileStorage {
     }
 
     public void delete(String user, String topic, String fileName) {
-        Path file = root.resolve(user).resolve(topic).resolve(fileName);
+        Path topicDir = root.resolve(user).resolve(topic);
+        Path file = topicDir.resolve(fileName);
 
         try {
             if (!Files.exists(file)) {
                 throw new RuntimeException("file not found");
             }
+
+            // 1. удаляем файл
             Files.delete(file);
             System.out.println("Файл удалён: " + file.toAbsolutePath());
+
+            // 2. если папка topic пустая → удалить
+            if (Files.exists(topicDir) && isDirectoryEmpty(topicDir)) {
+                Files.delete(topicDir);
+                System.out.println("Папка topic удалена: " + topicDir);
+            }
+
+            // 3. если папка user пустая → удалить (опционально, но правильно)
+            Path userDir = root.resolve(user);
+            if (Files.exists(userDir) && isDirectoryEmpty(userDir)) {
+                Files.delete(userDir);
+                System.out.println("Папка user удалена: " + userDir);
+            }
+
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private boolean isDirectoryEmpty(Path dir) throws IOException {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+            return !stream.iterator().hasNext();
         }
     }
 }
