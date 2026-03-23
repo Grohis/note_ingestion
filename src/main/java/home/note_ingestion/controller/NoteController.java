@@ -59,4 +59,24 @@ public class NoteController {
         service.delete(user, topic, file);
         return "deleted";
     }
+
+    @PostMapping("/rename")
+    public String renameNote(
+            @RequestParam String user,
+            @RequestParam String topic,
+            @RequestParam String oldName,
+            @RequestParam String newTitle
+    ) {
+        return service.renameNote(user, topic, oldName, newTitle);
+    }
+
+    @PostMapping("/rename-topic")
+    public String renameTopic(
+            @RequestParam String user,
+            @RequestParam String oldTopic,
+            @RequestParam String newTopic
+    ) {
+        service.renameTopic(user, oldTopic, newTopic);
+        return "topic renamed";
+    }
 }

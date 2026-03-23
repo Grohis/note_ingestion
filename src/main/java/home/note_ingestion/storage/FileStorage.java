@@ -155,16 +155,111 @@ public class FileStorage {
     }
 
     public void delete(String user, String topic, String fileName) {
-        Path file = root.resolve(user).resolve(topic).resolve(fileName);
+        Path topicDir = root.resolve(user).resolve(topic);
+        Path file = topicDir.resolve(fileName);
 
         try {
             if (!Files.exists(file)) {
                 throw new RuntimeException("file not found");
             }
+
+            // 1. удаляем файл
             Files.delete(file);
             System.out.println("Файл удалён: " + file.toAbsolutePath());
+
+            // 2. если папка topic пустая → удалить
+            if (Files.exists(topicDir) && isDirectoryEmpty(topicDir)) {
+                Files.delete(topicDir);
+                System.out.println("Папка topic удалена: " + topicDir);
+            }
+
+            // 3. если папка user пустая → удалить (опционально, но правильно)
+            Path userDir = root.resolve(user);
+            if (Files.exists(userDir) && isDirectoryEmpty(userDir)) {
+                Files.delete(userDir);
+                System.out.println("Папка user удалена: " + userDir);
+            }
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+
+    private boolean isDirectoryEmpty(Path dir) throws IOException {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+            return !stream.iterator().hasNext();
+        }
+    }
+
+    public String renameFile(String user, String topic, String oldName, String newTitle) {
+        try {
+            Path dir = root.resolve(user).resolve(topic);
+
+            Path oldPath = dir.resolve(oldName);
+
+            if (!Files.exists(oldPath)) {
+                throw new RuntimeException("file not found");
+            }
+
+            String slug = SlugUtil.toSlug(newTitle);
+            if (slug.isEmpty()) {
+                slug = newTitle;
+            }
+
+            String newFileName = slug + ".md";
+            Path newPath = dir.resolve(newFileName);
+
+            // защита от перезаписи
+            int counter = 1;
+            while (Files.exists(newPath)) {
+                newFileName = slug + "-" + counter + ".md";
+                newPath = dir.resolve(newFileName);
+                counter++;
+            }
+
+            Files.move(oldPath, newPath);
+
+            // обновим title внутри файла
+            updateTitleInsideFile(newPath, newTitle);
+
+            return newFileName;
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void updateTitleInsideFile(Path file, String newTitle) throws IOException {
+        String content = Files.readString(file, StandardCharsets.UTF_8);
+
+        String updated = content.replaceFirst(
+                "title:.*",
+                "title: " + newTitle
+        );
+
+        Files.writeString(file, updated, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
+    }
+
+    public void renameDirectory(String user, String oldTopic, String newTopic) {
+        try {
+            Path userDir = root.resolve(user);
+
+            Path oldPath = userDir.resolve(oldTopic);
+            Path newPath = userDir.resolve(newTopic);
+
+            if (!Files.exists(oldPath)) {
+                throw new RuntimeException("topic not found");
+            }
+
+            if (Files.exists(newPath)) {
+                throw new RuntimeException("target topic already exists");
+            }
+
+            Files.move(oldPath, newPath);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }
