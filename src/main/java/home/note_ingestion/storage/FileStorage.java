@@ -16,25 +16,20 @@ public class FileStorage {
 
     public void save(Note note) {
         try {
-            // 1. путь: data/user/topic
             Path dir = root
                     .resolve(note.getUser())
                     .resolve(note.getTopic());
 
             Files.createDirectories(dir);
 
-            // 2. slug
             String slug = SlugUtil.toSlug(note.getTitle());
             if (slug.isEmpty()) {
-                //slug = "note";
                 slug = note.getTitle();
             }
 
-            // 3. имя файла
             String filename = slug + ".md";
             Path path = dir.resolve(filename);
 
-            // 4. защита от перезаписи
             int counter = 1;
             while (Files.exists(path)) {
                 filename = slug + "-" + counter + ".md";
@@ -42,21 +37,23 @@ public class FileStorage {
                 counter++;
             }
 
-            // 5. metadata + текст
+            String tagsLine = buildTagsLine(note.getTags());
+
             String content = """
                     ---
                     title: %s
                     created: %s
+                    %s
                     ---
                     
                     %s
                     """.formatted(
                     note.getTitle(),
                     LocalDateTime.now(),
+                    tagsLine,
                     note.getText()
             );
 
-            // 6. запись
             Files.writeString(
                     path,
                     content,
@@ -69,6 +66,7 @@ public class FileStorage {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
         System.out.println("TITLE = " + note.getTitle());
     }
 
@@ -115,43 +113,40 @@ public class FileStorage {
     public void update(String user, String topic, String fileName, String newText) {
         try {
             Path file = root.resolve(user).resolve(topic).resolve(fileName);
+
             if (!Files.exists(file)) {
                 throw new RuntimeException("file not found");
             }
 
-            // Читаем старый файл
-            String content = Files.readString(file, StandardCharsets.UTF_8);
+            String existing = Files.readString(file, StandardCharsets.UTF_8);
 
-            // Извлекаем существующий заголовок (title и topic)
-            String[] parts = content.split("---", 3);
-            String header = parts.length > 2 ? parts[1] : "";
+            String header = extractHeader(existing);
 
-            String titleLine = header.lines()
-                    .filter(l -> l.startsWith("title:"))
-                    .findFirst()
-                    .orElse("title: " + fileName.replace(".md",""));
+            String newContent = header + "\n\n" + newText;
 
-            String topicLine = header.lines()
-                    .filter(l -> l.startsWith("topic:"))
-                    .findFirst()
-                    .orElse("topic: " + topic);
-
-            // Формируем новый контент с новым текстом и новым created
-            String newContent = """
-                    ---
-                    %s
-                    %s
-                    created: %s
-                    ---
-                    
-                    %s
-                    """.formatted(titleLine, topicLine, LocalDateTime.now(), newText);
-
-            Files.writeString(file, newContent, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
+            Files.writeString(
+                    file,
+                    newContent,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.TRUNCATE_EXISTING
+            );
 
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String extractHeader(String content) {
+        if (!content.startsWith("---")) {
+            return "";
+        }
+
+        int end = content.indexOf("\n---", 3);
+        if (end == -1) {
+            return "";
+        }
+
+        return content.substring(0, end + 4);
     }
 
     public void delete(String user, String topic, String fileName) {
@@ -163,17 +158,14 @@ public class FileStorage {
                 throw new RuntimeException("file not found");
             }
 
-            // 1. удаляем файл
             Files.delete(file);
             System.out.println("Файл удалён: " + file.toAbsolutePath());
 
-            // 2. если папка topic пустая → удалить
             if (Files.exists(topicDir) && isDirectoryEmpty(topicDir)) {
                 Files.delete(topicDir);
                 System.out.println("Папка topic удалена: " + topicDir);
             }
 
-            // 3. если папка user пустая → удалить (опционально, но правильно)
             Path userDir = root.resolve(user);
             if (Files.exists(userDir) && isDirectoryEmpty(userDir)) {
                 Files.delete(userDir);
@@ -209,7 +201,6 @@ public class FileStorage {
             String newFileName = slug + ".md";
             Path newPath = dir.resolve(newFileName);
 
-            // защита от перезаписи
             int counter = 1;
             while (Files.exists(newPath)) {
                 newFileName = slug + "-" + counter + ".md";
@@ -219,7 +210,6 @@ public class FileStorage {
 
             Files.move(oldPath, newPath);
 
-            // обновим title внутри файла
             updateTitleInsideFile(newPath, newTitle);
 
             return newFileName;
@@ -262,4 +252,17 @@ public class FileStorage {
         }
     }
 
+    private String buildTagsLine(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return "tags: []";
+        }
+
+        String normalized = tags.stream()
+                .map(t -> t.toLowerCase().trim())
+                .filter(t -> !t.isEmpty())
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("");
+
+        return "tags: [" + normalized + "]";
+    }
 }
