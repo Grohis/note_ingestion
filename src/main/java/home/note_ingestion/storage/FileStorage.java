@@ -190,4 +190,72 @@ public class FileStorage {
             return !stream.iterator().hasNext();
         }
     }
+
+    public void renameFile(String user, String topic, String oldName, String newTitle) {
+        try {
+            Path dir = root.resolve(user).resolve(topic);
+
+            Path oldPath = dir.resolve(oldName);
+
+            if (!Files.exists(oldPath)) {
+                throw new RuntimeException("file not found");
+            }
+
+            String slug = SlugUtil.toSlug(newTitle);
+            if (slug.isEmpty()) {
+                slug = newTitle;
+            }
+
+            Path newPath = dir.resolve(slug + ".md");
+
+            // защита от перезаписи
+            int counter = 1;
+            while (Files.exists(newPath)) {
+                newPath = dir.resolve(slug + "-" + counter + ".md");
+                counter++;
+            }
+
+            Files.move(oldPath, newPath);
+
+            // 👉 обновим title внутри файла
+            updateTitleInsideFile(newPath, newTitle);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void updateTitleInsideFile(Path file, String newTitle) throws IOException {
+        String content = Files.readString(file, StandardCharsets.UTF_8);
+
+        String updated = content.replaceFirst(
+                "title:.*",
+                "title: " + newTitle
+        );
+
+        Files.writeString(file, updated, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
+    }
+
+    public void renameDirectory(String user, String oldTopic, String newTopic) {
+        try {
+            Path userDir = root.resolve(user);
+
+            Path oldPath = userDir.resolve(oldTopic);
+            Path newPath = userDir.resolve(newTopic);
+
+            if (!Files.exists(oldPath)) {
+                throw new RuntimeException("topic not found");
+            }
+
+            if (Files.exists(newPath)) {
+                throw new RuntimeException("target topic already exists");
+            }
+
+            Files.move(oldPath, newPath);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }
