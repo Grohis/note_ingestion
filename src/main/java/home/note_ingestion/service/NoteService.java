@@ -83,8 +83,8 @@ public class NoteService {
         storage.delete(user, topic, fileName);
     }
 
-    public void renameNote(String user, String topic, String oldName, String newTitle) {
-        storage.renameFile(user, topic, oldName, newTitle);
+    public String renameNote(String user, String topic, String oldName, String newTitle) {
+        return storage.renameFile(user, topic, oldName, newTitle);
     }
 
     public void renameTopic(String user, String oldTopic, String newTopic) {

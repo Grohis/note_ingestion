@@ -67,8 +67,7 @@ public class NoteController {
             @RequestParam String oldName,
             @RequestParam String newTitle
     ) {
-        service.renameNote(user, topic, oldName, newTitle);
-        return "renamed";
+        return service.renameNote(user, topic, oldName, newTitle);
     }
 
     @PostMapping("/rename-topic")

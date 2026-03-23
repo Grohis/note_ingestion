@@ -191,7 +191,7 @@ public class FileStorage {
         }
     }
 
-    public void renameFile(String user, String topic, String oldName, String newTitle) {
+    public String renameFile(String user, String topic, String oldName, String newTitle) {
         try {
             Path dir = root.resolve(user).resolve(topic);
 
@@ -206,19 +206,23 @@ public class FileStorage {
                 slug = newTitle;
             }
 
-            Path newPath = dir.resolve(slug + ".md");
+            String newFileName = slug + ".md";
+            Path newPath = dir.resolve(newFileName);
 
             // защита от перезаписи
             int counter = 1;
             while (Files.exists(newPath)) {
-                newPath = dir.resolve(slug + "-" + counter + ".md");
+                newFileName = slug + "-" + counter + ".md";
+                newPath = dir.resolve(newFileName);
                 counter++;
             }
 
             Files.move(oldPath, newPath);
 
-            // 👉 обновим title внутри файла
+            // обновим title внутри файла
             updateTitleInsideFile(newPath, newTitle);
+
+            return newFileName;
 
         } catch (IOException e) {
             throw new RuntimeException(e);

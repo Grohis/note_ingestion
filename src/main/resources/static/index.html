@@ -313,10 +313,12 @@
 
         api(`/notes/rename?user=${user}&topic=${currentTopic}&oldName=${currentFile}&newTitle=${encodeURIComponent(newName)}`, {
             method: "POST"
-        }).then(() => {
-            showToast();
-            loadTopics();
-        });
+        }).then(r => r.text())
+.then(newFileName => {
+    currentFile = newFileName;
+    showToast();
+    loadTopics();
+});
     }
 
     /* ===== RENAME TOPIC ===== */
