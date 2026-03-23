@@ -25,6 +25,12 @@
             padding:10px;
         }
 
+        #container {
+            display:flex;
+            flex-direction:column;
+            padding:10px;
+        }
+
         #treeContainer {
             position:fixed;
             left:-260px;
@@ -37,6 +43,7 @@
             z-index:1000;
             overflow:auto;
         }
+
         #treeContainer.open { left:0; }
 
         #overlay {
@@ -44,7 +51,9 @@
             inset:0;
             background:rgba(0,0,0,0.3);
             display:none;
+            z-index:900;
         }
+
         #overlay.open { display:block; }
 
         #noteContent {
@@ -54,7 +63,11 @@
             min-height:200px;
         }
 
-        #noteEditor { display:none; flex-direction:column; }
+        #noteEditor {
+            display:none;
+            flex-direction:column;
+            gap:10px;
+        }
 
         textarea, input {
             width:100%;
@@ -103,35 +116,42 @@
 
 <div id="overlay" onclick="closeTree()"></div>
 
-<div style="padding:10px">
+<div id="container">
+
     <div id="treeContainer">
         <h4>Топики</h4>
         <ul id="treeList"></ul>
     </div>
 
-    <div id="noteContent">Выберите заметку</div>
+    <div style="flex:1;">
+        <div id="noteContent">Выберите заметку</div>
 
-    <div id="noteEditor">
-        <textarea id="editText"></textarea>
-        <button onclick="saveEdit()">Сохранить</button>
-        <button onclick="cancelEdit()">Отмена</button>
+        <div id="noteEditor">
+            <textarea id="editText"></textarea>
+            <button onclick="saveEdit()">Сохранить</button>
+            <button onclick="cancelEdit()">Отмена</button>
+        </div>
+
+        <div>
+            <button id="editBtn" style="display:none" onclick="startEdit()">Редактировать</button>
+            <button onclick="renameCurrentNote()" id="renameBtn" style="display:none">Переименовать</button>
+            <button id="deleteBtn" style="display:none" onclick="deleteNote()">Удалить</button>
+        </div>
     </div>
 
-    <div>
-        <button id="editBtn" style="display:none" onclick="startEdit()">Редактировать</button>
-        <button id="renameBtn" style="display:none" onclick="renameCurrentNote()">Переименовать</button>
-        <button id="deleteBtn" style="display:none" onclick="deleteNote()">Удалить</button>
-    </div>
 </div>
 
-<!-- modal -->
+<!-- Modal -->
 <div id="modal">
     <div id="modalContent">
         <h3>Новая заметка</h3>
+
         <input id="topic" list="topics" placeholder="topic">
         <datalist id="topics"></datalist>
+
         <input id="title" placeholder="title">
         <textarea id="text" placeholder="text"></textarea>
+
         <button onclick="save()">Сохранить</button>
         <button onclick="hideModal()">Отмена</button>
     </div>
@@ -150,41 +170,7 @@
 <script>
     const headers = { "X-API-KEY": "123" };
 
-    // универсальный fetch
-    unction api(url, options = {}) {
-    const mergedHeaders = {
-        "X-API-KEY": "123",
-        ...(options.headers || {})
-    };
-
-    return fetch(url, {
-        ...options,
-        headers: mergedHeaders
-    });
-}
-
     let user, currentTopic, currentFile;
-
-    const SESSION_TTL = 5 * 60 * 1000;
-
-    /* ===== INIT ===== */
-    window.onload = () => {
-        const savedUser = localStorage.getItem("user");
-        const savedTime = localStorage.getItem("user_time");
-        const now = Date.now();
-
-        if (!savedUser || !savedTime || (now - savedTime > SESSION_TTL)) {
-            user = prompt("Введите имя:");
-            localStorage.setItem("user", user);
-            localStorage.setItem("user_time", now);
-        } else {
-            user = savedUser;
-        }
-
-        api('/user/set?user=' + user, { method: 'POST' });
-
-        loadTopics();
-    };
 
     /* ===== UI ===== */
     function toggleTree() {
@@ -200,7 +186,7 @@
         setTimeout(() => toast.style.display = "none", 2000);
     }
 
-    /* ===== MODAL ===== */
+    /* ===== Modal ===== */
     function showModal() {
         topic.value = "";
         title.value = "";
@@ -209,9 +195,17 @@
     }
     function hideModal() { modal.style.display = "none"; }
 
-    /* ===== LOAD ===== */
+    /* ===== Init ===== */
+    window.onload = () => {
+        user = localStorage.getItem("user") || prompt("Введите имя:");
+        localStorage.setItem("user", user);
+        fetch('/user/set?user=' + user, { method: 'POST' });
+        loadTopics();
+    };
+
+    /* ===== Topics ===== */
     function loadTopics() {
-        api('/notes/tree?user=' + user)
+        fetch('/notes/tree?user=' + user, { headers })
             .then(r => r.json())
             .then(tree => {
                 treeList.innerHTML = "";
@@ -226,6 +220,7 @@
                     const li = document.createElement("li");
                     li.innerText = topicName;
 
+                    // 👉 rename topic
                     li.ondblclick = () => renameTopic(topicName);
 
                     const ul = document.createElement("ul");
@@ -248,16 +243,17 @@
             });
     }
 
-    /* ===== NOTE ===== */
+    /* ===== Note ===== */
     function loadNote(topic, file) {
-        api(`/notes/content?user=${user}&topic=${topic}&file=${file}`)
+        fetch(`/notes/content?user=${user}&topic=${topic}&file=${file}`, { headers })
             .then(r => r.text())
             .then(full => {
 
+                // скрываем metadata
                 const parts = full.split("\n---\n");
-                const textOnly = parts.length >= 2 ? parts.slice(1).join("\n---\n").trim() : full;
+                const text = parts.length >= 2 ? parts.slice(1).join("\n---\n").trim() : full;
 
-                noteContent.innerText = textOnly;
+                noteContent.innerText = text;
 
                 currentTopic = topic;
                 currentFile = file;
@@ -268,11 +264,11 @@
             });
     }
 
-    /* ===== CREATE ===== */
+    /* ===== Create ===== */
     function save() {
-        api("/notes", {
+        fetch("/notes", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...headers },
             body: JSON.stringify({
                 user,
                 topic: topic.value,
@@ -286,18 +282,20 @@
         });
     }
 
-    /* ===== EDIT ===== */
+    /* ===== Edit ===== */
     function startEdit() {
         editText.value = noteContent.innerText;
         noteEditor.style.display = "flex";
     }
+
     function cancelEdit() {
         noteEditor.style.display = "none";
     }
+
     function saveEdit() {
-        api(`/notes/update?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
+        fetch(`/notes/update?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
             method: "POST",
-            headers: { "Content-Type": "text/plain" },
+            headers: { "Content-Type": "text/plain", ...headers },
             body: editText.value
         }).then(() => {
             noteContent.innerText = editText.value;
@@ -306,41 +304,45 @@
         });
     }
 
-    /* ===== RENAME NOTE ===== */
+    /* ===== Rename NOTE ===== */
     function renameCurrentNote() {
-        const newName = prompt("Новое имя:");
+        const newName = prompt("Новое имя заметки:");
         if (!newName) return;
 
-        api(`/notes/rename?user=${user}&topic=${currentTopic}&oldName=${currentFile}&newTitle=${encodeURIComponent(newName)}`, {
+        fetch(`/notes/rename?user=${user}&topic=${currentTopic}&oldName=${currentFile}&newTitle=${encodeURIComponent(newName)}`, {
             method: "POST"
+            headers: { "X-API-KEY": "123"
         }).then(() => {
             showToast();
             loadTopics();
         });
     }
 
-    /* ===== RENAME TOPIC ===== */
+    /* ===== Rename TOPIC ===== */
     function renameTopic(oldTopic) {
         const newName = prompt("Новое имя папки:");
         if (!newName) return;
 
-        api(`/notes/rename-topic?user=${user}&oldTopic=${oldTopic}&newTopic=${encodeURIComponent(newName)}`, {
+        fetch(`/notes/rename-topic?user=${user}&oldTopic=${oldTopic}&newTopic=${encodeURIComponent(newName)}`, {
             method: "POST"
+            headers: { "X-API-KEY": "123"
         }).then(() => {
             showToast();
             loadTopics();
         });
     }
 
-    /* ===== DELETE ===== */
+    /* ===== Delete ===== */
     function deleteNote() {
         deleteModal.style.display = "flex";
     }
+
     function confirmDelete() {
         if (deleteConfirmInput.value !== "удалить") return;
 
-        api(`/notes/delete?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
-            method: "DELETE"
+        fetch(`/notes/delete?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
+            method: "DELETE",
+            headers
         }).then(() => {
             noteContent.innerText = "Выберите заметку";
 
