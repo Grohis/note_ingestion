@@ -151,7 +151,7 @@
     const headers = { "X-API-KEY": "123" };
 
     // универсальный fetch
-    unction api(url, options = {}) {
+    function api(url, options = {}) {
     const mergedHeaders = {
         "X-API-KEY": "123",
         ...(options.headers || {})
