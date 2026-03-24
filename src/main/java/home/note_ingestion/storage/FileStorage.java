@@ -2,6 +2,8 @@ package home.note_ingestion.storage;
 
 import home.note_ingestion.model.Note;
 import home.note_ingestion.util.SlugUtil;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -116,6 +118,7 @@ public class FileStorage {
 
             if (!Files.exists(file)) {
                 throw new RuntimeException("file not found");
+               // throw new ResponseStatusException(HttpStatus.NOT_FOUND, "file not found");
             }
 
             String existing = Files.readString(file, StandardCharsets.UTF_8);
