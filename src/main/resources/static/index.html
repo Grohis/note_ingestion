@@ -53,14 +53,18 @@
             padding:12px;
             border-radius:10px;
             min-height:200px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow: auto;
         }
 
         #noteEditor { display:none; flex-direction:column; }
 
-        textarea, input {
-            width:100%;
-            font-size:16px;
-            margin-top:6px;
+        textarea {
+         width: 100%;
+         min-height: 100px;
+         resize: none;
+         overflow: hidden;
         }
 
         #modal, #deleteModal {
@@ -179,7 +183,18 @@
 
         api('/user/set?user=' + user, { method: 'POST' });
         loadTopics();
+
+        setupAutoResize();
     };
+
+        function setupAutoResize() {
+        document.querySelectorAll("textarea").forEach(textarea => {
+            textarea.addEventListener("input", () => {
+                textarea.style.height = "auto";
+                textarea.style.height = textarea.scrollHeight + "px";
+            });
+        });
+    }
 
     function showToast() {
         const t = document.getElementById("toast");
@@ -244,7 +259,8 @@
             .then(r => r.text())
             .then(full => {
                 const parts = full.split("---");
-                noteContent.innerText = parts.length >= 3 ? parts[2].trim() : full;
+                const text = parts.length >= 3 ? parts[2].trim() : full;
+                noteContent.textContent = text;
 
                 currentTopic = topic;
                 currentFile = file;
@@ -334,7 +350,8 @@
 
     function startEdit() {
         if (!currentFile) return alert("Выбери заметку");
-        editText.value = noteContent.innerText;
+        editText.value = noteContent.textContent;
+        editText.dispatchEvent(new Event('input'));
         noteEditor.style.display = "flex";
     }
 

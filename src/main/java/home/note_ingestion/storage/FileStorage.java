@@ -2,8 +2,6 @@ package home.note_ingestion.storage;
 
 import home.note_ingestion.model.Note;
 import home.note_ingestion.util.SlugUtil;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -68,8 +66,6 @@ public class FileStorage {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        System.out.println("TITLE = " + note.getTitle());
     }
 
     public List<String> list(String user, String topic) {
@@ -101,11 +97,23 @@ public class FileStorage {
                     .resolve(topic)
                     .resolve(fileName);
 
+            // 🔧 FIX 1: логируем путь
+            System.out.println("READ PATH: " + file.toAbsolutePath());
+
+            // 🔧 FIX 2: более понятная ошибка
             if (!Files.exists(file)) {
-                throw new RuntimeException("file not found");
+                throw new RuntimeException("file not found: " + file.toAbsolutePath());
             }
 
-            return Files.readString(file);
+            // 🔧 FIX 3: гарантируем UTF-8
+            String content = Files.readString(file, StandardCharsets.UTF_8);
+
+            // 🔧 FIX 4: если это "сырой" md без header — просто возвращаем
+            if (!content.startsWith("---")) {
+                return content;
+            }
+
+            return content;
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -117,8 +125,7 @@ public class FileStorage {
             Path file = root.resolve(user).resolve(topic).resolve(fileName);
 
             if (!Files.exists(file)) {
-                throw new RuntimeException("file not found");
-               // throw new ResponseStatusException(HttpStatus.NOT_FOUND, "file not found");
+                throw new RuntimeException("file not found: " + file.toAbsolutePath()); // 🔧 FIX
             }
 
             String existing = Files.readString(file, StandardCharsets.UTF_8);
@@ -158,21 +165,18 @@ public class FileStorage {
 
         try {
             if (!Files.exists(file)) {
-                throw new RuntimeException("file not found");
+                throw new RuntimeException("file not found: " + file.toAbsolutePath()); // 🔧 FIX
             }
 
             Files.delete(file);
-            System.out.println("Файл удалён: " + file.toAbsolutePath());
 
             if (Files.exists(topicDir) && isDirectoryEmpty(topicDir)) {
                 Files.delete(topicDir);
-                System.out.println("Папка topic удалена: " + topicDir);
             }
 
             Path userDir = root.resolve(user);
             if (Files.exists(userDir) && isDirectoryEmpty(userDir)) {
                 Files.delete(userDir);
-                System.out.println("Папка user удалена: " + userDir);
             }
 
         } catch (IOException e) {
@@ -193,7 +197,7 @@ public class FileStorage {
             Path oldPath = dir.resolve(oldName);
 
             if (!Files.exists(oldPath)) {
-                throw new RuntimeException("file not found");
+                throw new RuntimeException("file not found: " + oldPath.toAbsolutePath()); // 🔧 FIX
             }
 
             String slug = SlugUtil.toSlug(newTitle);

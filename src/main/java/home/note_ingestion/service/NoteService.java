@@ -48,7 +48,6 @@ public class NoteService {
         if (user == null || topic == null || fileName == null) {
             throw new RuntimeException("params required");
         }
-
         return storage.read(user, topic, fileName);
     }
 
