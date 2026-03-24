@@ -48,6 +48,12 @@
         }
         #overlay.open { display:block; }
 
+        #main {
+            padding: 10px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
         #noteContent {
             background:white;
             padding:12px;
@@ -61,10 +67,11 @@
         #noteEditor { display:none; flex-direction:column; }
 
         textarea {
-         width: 100%;
-         min-height: 100px;
-         resize: none;
-         overflow: hidden;
+            width: 100%;
+            min-height: 100px;
+            resize: none;
+            overflow: hidden;
+            box-sizing: border-box;
         }
 
         #modal, #deleteModal {
@@ -115,11 +122,12 @@
 
 <div id="overlay" onclick="closeTree()"></div>
 
-<div style="padding:10px">
-    <div id="treeContainer">
-        <h4>Топики</h4>
-        <ul id="treeList"></ul>
-    </div>
+<div id="treeContainer">
+    <h4>Топики</h4>
+    <ul id="treeList"></ul>
+</div>
+
+<div id="main">
 
     <div id="noteContent">Выберите заметку</div>
 
@@ -135,6 +143,7 @@
         <button onclick="renameTopic()">Переименовать папку</button>
         <button id="deleteBtn" style="display:none" onclick="deleteNote()">Удалить</button>
     </div>
+
 </div>
 
 <div id="modal">
@@ -187,12 +196,15 @@
         setupAutoResize();
     };
 
-        function setupAutoResize() {
+    function setupAutoResize() {
         document.querySelectorAll("textarea").forEach(textarea => {
-            textarea.addEventListener("input", () => {
+            const resize = () => {
                 textarea.style.height = "auto";
                 textarea.style.height = textarea.scrollHeight + "px";
-            });
+            };
+
+            textarea.addEventListener("input", resize);
+            resize();
         });
     }
 
