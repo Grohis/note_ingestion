@@ -15,6 +15,7 @@
             background:#3498db;
             color:white;
             margin:2px;
+            cursor:pointer;
         }
 
         #deleteBtn { background:#e74c3c; }
@@ -101,12 +102,11 @@
     <button onclick="showModal()">➕</button>
 </div>
 
-<!-- SEARCH -->
 <div style="padding:10px; display:flex; gap:5px;">
     <input id="searchText" placeholder="поиск по тексту">
     <input id="searchTag" placeholder="поиск по тегу">
     <button onclick="searchNotes()">Поиск</button>
-    <button onclick="loadTopics()">Сброс</button>
+    <button onclick="resetSearch()">Сброс</button>
 </div>
 
 <div id="overlay" onclick="closeTree()"></div>
@@ -128,18 +128,21 @@
     <div>
         <button id="editBtn" style="display:none" onclick="startEdit()">Редактировать</button>
         <button id="renameBtn" style="display:none" onclick="renameCurrentNote()">Переименовать</button>
+        <button onclick="renameTopic()">Переименовать папку</button>
         <button id="deleteBtn" style="display:none" onclick="deleteNote()">Удалить</button>
     </div>
 </div>
 
-<!-- modal -->
 <div id="modal">
     <div id="modalContent">
         <h3>Новая заметка</h3>
         <input id="topic" list="topics" placeholder="topic">
         <datalist id="topics"></datalist>
+
         <input id="title" placeholder="title">
+        <input id="tags" placeholder="tags (через запятую)">
         <textarea id="text" placeholder="text"></textarea>
+
         <button onclick="save()">Сохранить</button>
         <button onclick="hideModal()">Отмена</button>
     </div>
@@ -156,33 +159,17 @@
 <div id="toast">OK</div>
 
 <script>
-    const treeContainer = document.getElementById("treeContainer");
-    const overlay = document.getElementById("overlay");
-    const treeList = document.getElementById("treeList");
-    const noteContent = document.getElementById("noteContent");
-    const noteEditor = document.getElementById("noteEditor");
-    const editText = document.getElementById("editText");
-    const editBtn = document.getElementById("editBtn");
-    const deleteBtn = document.getElementById("deleteBtn");
-    const renameBtn = document.getElementById("renameBtn");
-    const modal = document.getElementById("modal");
-    const topic = document.getElementById("topic");
-    const title = document.getElementById("title");
-    const text = document.getElementById("text");
-    const topics = document.getElementById("topics");
-    const toast = document.getElementById("toast");
-    const deleteModal = document.getElementById("deleteModal");
-    const deleteConfirmInput = document.getElementById("deleteConfirmInput");
-
-    function api(url, options = {}) {
-        return fetch(url, {
+    const api = (url, options = {}) =>
+        fetch(url, {
             ...options,
             headers: {
                 "X-API-KEY": "123",
                 ...(options.headers || {})
             }
+        }).then(r => {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r;
         });
-    }
 
     let user, currentTopic, currentFile;
 
@@ -194,6 +181,12 @@
         loadTopics();
     };
 
+    function showToast() {
+        const t = document.getElementById("toast");
+        t.style.display = "block";
+        setTimeout(() => t.style.display = "none", 2000);
+    }
+
     function toggleTree() {
         treeContainer.classList.toggle("open");
         overlay.classList.toggle("open");
@@ -202,13 +195,16 @@
         treeContainer.classList.remove("open");
         overlay.classList.remove("open");
     }
-    function showToast() {
-        toast.style.display = "block";
-        setTimeout(() => toast.style.display = "none", 2000);
-    }
 
     function showModal() { modal.style.display = "flex"; }
     function hideModal() { modal.style.display = "none"; }
+
+    function resetForm() {
+        topic.value = "";
+        title.value = "";
+        text.value = "";
+        document.getElementById("tags").value = "";
+    }
 
     function loadTopics() {
         api('/notes/tree?user=' + user)
@@ -218,12 +214,15 @@
                 topics.innerHTML = "";
 
                 Object.entries(tree).forEach(([topicName, files]) => {
-                    const option = document.createElement("option");
-                    option.value = topicName;
-                    topics.appendChild(option);
+
+                    const opt = document.createElement("option");
+                    opt.value = topicName;
+                    topics.appendChild(opt);
 
                     const li = document.createElement("li");
                     li.innerText = topicName;
+
+                    li.ondblclick = () => renameTopic(topicName);
 
                     const ul = document.createElement("ul");
 
@@ -245,9 +244,7 @@
             .then(r => r.text())
             .then(full => {
                 const parts = full.split("---");
-                const textOnly = parts.length >= 3 ? parts[2].trim() : full;
-
-                noteContent.innerText = textOnly;
+                noteContent.innerText = parts.length >= 3 ? parts[2].trim() : full;
 
                 currentTopic = topic;
                 currentFile = file;
@@ -259,32 +256,13 @@
     }
 
     function searchNotes() {
-        const q = document.getElementById("searchText").value;
-        const tag = document.getElementById("searchTag").value;
+        alert("Поиск не реализован на backend");
+    }
 
-        let url = `/notes/search?user=${user}`;
-        if (q) url += `&q=${encodeURIComponent(q)}`;
-        if (tag) url += `&tag=${encodeURIComponent(tag)}`;
-
-        api(url)
-            .then(r => r.json())
-            .then(files => {
-                treeList.innerHTML = "";
-
-                const ul = document.createElement("ul");
-
-                files.forEach(full => {
-                    const [topic, file] = full.split("/");
-
-                    const li = document.createElement("li");
-                    li.innerText = file;
-                    li.onclick = () => loadNote(topic, file);
-
-                    ul.appendChild(li);
-                });
-
-                treeList.appendChild(ul);
-            });
+    function resetSearch() {
+        searchText.value = "";
+        searchTag.value = "";
+        loadTopics();
     }
 
     function save() {
@@ -295,23 +273,78 @@
                 user,
                 topic: topic.value,
                 title: title.value,
-                text: text.value
+                text: text.value,
+                tags: document.getElementById("tags").value
+                    ? document.getElementById("tags").value.split(",")
+                    : []
             })
         }).then(() => {
-            showToast();
+            resetForm();
             hideModal();
             loadTopics();
+            showToast();
+        }).catch(e => alert("Ошибка сохранения: " + e));
+    }
+
+    function renameCurrentNote() {
+        const newName = prompt("Новое имя файла:");
+        if (!newName) return;
+
+        const params = new URLSearchParams({
+            user,
+            topic: currentTopic,
+            oldName: currentFile,
+            newTitle: newName
         });
+
+        api("/notes/rename", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: params
+        })
+        .then(r => r.text())
+        .then(newFileName => {
+            currentFile = newFileName;
+            loadNote(currentTopic, newFileName);
+            loadTopics();
+            showToast();
+        })
+        .catch(e => alert("Ошибка rename: " + e));
+    }
+
+    function renameTopic(topicName = currentTopic) {
+        const newName = prompt("Новое имя папки:", topicName);
+        if (!newName) return;
+
+        const params = new URLSearchParams({
+            user,
+            oldTopic: topicName,
+            newTopic: newName
+        });
+
+        api("/notes/rename-topic", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: params
+        }).then(() => {
+            loadTopics();
+            showToast();
+        }).catch(e => alert("Ошибка rename topic: " + e));
     }
 
     function startEdit() {
+        if (!currentFile) return alert("Выбери заметку");
         editText.value = noteContent.innerText;
         noteEditor.style.display = "flex";
     }
+
     function cancelEdit() {
         noteEditor.style.display = "none";
     }
+
     function saveEdit() {
+        if (!currentFile) return alert("Нет файла");
+
         api(`/notes/update?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
             method: "POST",
             headers: { "Content-Type": "text/plain" },
@@ -320,12 +353,13 @@
             noteContent.innerText = editText.value;
             cancelEdit();
             showToast();
-        });
+        }).catch(e => alert("Ошибка обновления: " + e));
     }
 
     function deleteNote() {
         deleteModal.style.display = "flex";
     }
+
     function confirmDelete() {
         if (deleteConfirmInput.value !== "удалить") return;
 
@@ -337,8 +371,8 @@
             deleteBtn.style.display = "none";
             renameBtn.style.display = "none";
             deleteModal.style.display = "none";
-            showToast();
             loadTopics();
+            showToast();
         });
     }
 </script>
