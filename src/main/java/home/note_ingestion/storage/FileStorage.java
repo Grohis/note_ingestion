@@ -3,7 +3,8 @@ package home.note_ingestion.storage;
 import home.note_ingestion.exception.NotFoundException;
 import home.note_ingestion.model.Note;
 import home.note_ingestion.util.SlugUtil;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -14,6 +15,7 @@ import java.util.stream.Stream;
 public class FileStorage {
 
     private final Path root = Paths.get("data");
+    private static final Logger log = LoggerFactory.getLogger(FileStorage.class);
 
     public void save(Note note) {
         try {
@@ -62,7 +64,9 @@ public class FileStorage {
                     StandardOpenOption.CREATE_NEW
             );
 
-            System.out.println("Сохранили файл: " + path.toAbsolutePath());
+            // System.out.println("Сохранили файл: " + path.toAbsolutePath());
+            log.info("Saved note: user={}, topic={}, file={}",
+                    note.getUser(), note.getTopic(), filename);
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -98,17 +102,18 @@ public class FileStorage {
                     .resolve(topic)
                     .resolve(fileName);
 
-            // 🔧 FIX 1: логируем путь
-            System.out.println("READ PATH: " + file.toAbsolutePath());
+
+            // System.out.println("READ PATH: " + file.toAbsolutePath());
+            log.info("Reading file: user={}, topic={}, file={}", user, topic, fileName);
 
             if (!Files.exists(file)) {
                 throw new NotFoundException("file not found: " + fileName);
             }
 
-            // 🔧 FIX 3: гарантируем UTF-8
+
             String content = Files.readString(file, StandardCharsets.UTF_8);
 
-            // 🔧 FIX 4: если это "сырой" md без header — просто возвращаем
+
             if (!content.startsWith("---")) {
                 return content;
             }
@@ -140,6 +145,8 @@ public class FileStorage {
                     StandardCharsets.UTF_8,
                     StandardOpenOption.TRUNCATE_EXISTING
             );
+
+            log.info("Updating file: user={}, topic={}, file={}", user, topic, fileName);
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -178,6 +185,7 @@ public class FileStorage {
             if (Files.exists(userDir) && isDirectoryEmpty(userDir)) {
                 Files.delete(userDir);
             }
+            log.info("Deleting file: user={}, topic={}, file={}", user, topic, fileName);
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -216,8 +224,9 @@ public class FileStorage {
             }
 
             Files.move(oldPath, newPath);
-
             updateTitleInsideFile(newPath, newTitle);
+            log.info("Renaming file: user={}, topic={}, oldName={}, newName={}",
+                    user, topic, oldName, newFileName);
 
             return newFileName;
 
@@ -253,6 +262,8 @@ public class FileStorage {
             }
 
             Files.move(oldPath, newPath);
+            log.info("Renaming topic: user={}, oldTopic={}, newTopic={}",
+                    user, oldTopic, newTopic);
 
         } catch (IOException e) {
             throw new RuntimeException(e);
