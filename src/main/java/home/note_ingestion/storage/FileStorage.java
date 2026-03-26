@@ -30,12 +30,12 @@ public class FileStorage {
                 slug = note.getTitle();
             }
 
-            String filename = slug + ".md";
+            String filename = ensureMd(slug);
             Path path = dir.resolve(filename);
 
             int counter = 1;
             while (Files.exists(path)) {
-                filename = slug + "-" + counter + ".md";
+                filename = ensureMd(slug + "-" + counter);
                 path = dir.resolve(filename);
                 counter++;
             }
@@ -96,6 +96,7 @@ public class FileStorage {
     }
 
     public String read(String user, String topic, String fileName) {
+        fileName = ensureMd(fileName);
         try {
             Path file = root
                     .resolve(user)
@@ -125,19 +126,22 @@ public class FileStorage {
         }
     }
 
-    public void update(String user, String topic, String fileName, String newText) {
+    private Path buildPath(String user, String topic, String fileName) {
+        return root
+                .resolve(user)
+                .resolve(topic)
+                .resolve(fileName);
+    }
+
+    public void update(String user, String topic, String fileName, String newContent) {
         try {
-            Path file = root.resolve(user).resolve(topic).resolve(fileName);
+            fileName = ensureMd(fileName);
+
+            Path file = buildPath(user, topic, fileName);
 
             if (!Files.exists(file)) {
                 throw new NotFoundException("file not found: " + fileName);
             }
-
-            String existing = Files.readString(file, StandardCharsets.UTF_8);
-
-            String header = extractHeader(existing);
-
-            String newContent = header + "\n\n" + newText;
 
             Files.writeString(
                     file,
@@ -147,27 +151,16 @@ public class FileStorage {
             );
 
             log.info("Updating file: user={}, topic={}, file={}", user, topic, fileName);
+            log.info("CONTENT:\n{}", newContent);
 
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private String extractHeader(String content) {
-        if (!content.startsWith("---")) {
-            return "";
-        }
-
-        int end = content.indexOf("\n---", 3);
-        if (end == -1) {
-            return "";
-        }
-
-        return content.substring(0, end + 4);
-    }
-
     public void delete(String user, String topic, String fileName) {
         Path topicDir = root.resolve(user).resolve(topic);
+        fileName = ensureMd(fileName);
         Path file = topicDir.resolve(fileName);
 
         try {
@@ -202,6 +195,7 @@ public class FileStorage {
         try {
             Path dir = root.resolve(user).resolve(topic);
 
+            oldName = ensureMd(oldName);
             Path oldPath = dir.resolve(oldName);
 
             if (!Files.exists(oldPath)) {
@@ -282,5 +276,13 @@ public class FileStorage {
                 .orElse("");
 
         return "tags: [" + normalized + "]";
+    }
+
+    private String ensureMd(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("File name is empty");
+        }
+
+        return name.endsWith(".md") ? name : name + ".md";
     }
 }

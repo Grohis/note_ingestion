@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Notes App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body { margin:0; font-family:sans-serif; background:#f5f6f7; }
+
+        button {
+            padding:10px;
+            border:none;
+            border-radius:8px;
+            background:#3498db;
+            color:white;
+            margin:2px;
+            cursor:pointer;
+        }
+
+        #deleteBtn { background:#e74c3c; }
+
+        #topBar {
+            display:flex;
+            justify-content:space-between;
+            padding:10px;
+        }
+
+        #treeContainer {
+            position:fixed;
+            left:-260px;
+            top:0;
+            width:250px;
+            height:100%;
+            background:white;
+            padding:10px;
+            transition:0.3s;
+            z-index:1000;
+            overflow:auto;
+        }
+        #treeContainer.open { left:0; }
+
+        #overlay {
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,0.3);
+            display:none;
+        }
+        #overlay.open { display:block; }
+
+        #main {
+            padding: 10px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        #noteContent {
+            background:white;
+            padding:12px;
+            border-radius:10px;
+            min-height:200px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow: auto;
+        }
+
+        #noteEditor { display:none; flex-direction:column; }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            resize: none;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        #modal, #deleteModal {
+            display:none;
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,0.5);
+            justify-content:center;
+            align-items:center;
+        }
+
+        #modalContent, #deleteModal div {
+            background:white;
+            padding:20px;
+            width:90%;
+            max-width:400px;
+            border-radius:10px;
+        }
+
+        #toast {
+            display:none;
+            position:fixed;
+            bottom:20px;
+            left:50%;
+            transform:translateX(-50%);
+            background:#2ecc71;
+            color:white;
+            padding:10px;
+            border-radius:20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="topBar">
+    <button onclick="toggleTree()">☰</button>
+    <h3>Мои заметки</h3>
+    <button onclick="showModal()">➕</button>
+</div>
+
+<div style="padding:10px; display:flex; gap:5px;">
+    <input id="searchText" placeholder="поиск по тексту">
+    <input id="searchTag" placeholder="поиск по тегу">
+    <button onclick="searchNotes()">Поиск</button>
+    <button onclick="resetSearch()">Сброс</button>
+</div>
+
+<div id="overlay" onclick="closeTree()"></div>
+
+<div id="treeContainer">
+    <h4>Топики</h4>
+    <ul id="treeList"></ul>
+</div>
+
+<div id="main">
+
+    <div id="noteContent">Выберите заметку</div>
+
+    <div id="noteEditor">
+        <textarea id="editText"></textarea>
+        <button onclick="saveEdit()">Сохранить</button>
+        <button onclick="cancelEdit()">Отмена</button>
+    </div>
+
+    <div>
+        <button id="editBtn" style="display:none" onclick="startEdit()">Редактировать</button>
+        <button id="renameBtn" style="display:none" onclick="renameCurrentNote()">Переименовать</button>
+        <button onclick="renameTopic()">Переименовать папку</button>
+        <button id="deleteBtn" style="display:none" onclick="deleteNote()">Удалить</button>
+    </div>
+
+</div>
+
+<div id="modal">
+    <div id="modalContent">
+        <h3>Новая заметка</h3>
+        <input id="topic" list="topics" placeholder="topic">
+        <datalist id="topics"></datalist>
+
+        <input id="title" placeholder="title">
+        <input id="tags" placeholder="tags (через запятую)">
+        <textarea id="text" placeholder="text"></textarea>
+
+        <button onclick="save()">Сохранить</button>
+        <button onclick="hideModal()">Отмена</button>
+    </div>
+</div>
+
+<div id="deleteModal">
+    <div>
+        <p>Введите "удалить"</p>
+        <input id="deleteConfirmInput">
+        <button onclick="confirmDelete()">OK</button>
+    </div>
+</div>
+
+<div id="toast">OK</div>
+
+<script>
+    const api = (url, options = {}) =>
+        fetch(url, {
+            ...options,
+            headers: {
+                "X-API-KEY": "123",
+                ...(options.headers || {})
+            }
+        }).then(r => {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r;
+        });
+
+    let user, currentTopic, currentFile;
+
+    window.onload = () => {
+        user = localStorage.getItem("user") || prompt("Введите имя:");
+        localStorage.setItem("user", user);
+
+        api('/user/set?user=' + user, { method: 'POST' });
+        loadTopics();
+
+        setupAutoResize();
+    };
+
+    function setupAutoResize() {
+        document.querySelectorAll("textarea").forEach(textarea => {
+            const resize = () => {
+                textarea.style.height = "auto";
+                textarea.style.height = textarea.scrollHeight + "px";
+            };
+
+            textarea.addEventListener("input", resize);
+            resize();
+        });
+    }
+
+    function showToast() {
+        const t = document.getElementById("toast");
+        t.style.display = "block";
+        setTimeout(() => t.style.display = "none", 2000);
+    }
+
+    function toggleTree() {
+        treeContainer.classList.toggle("open");
+        overlay.classList.toggle("open");
+    }
+    function closeTree() {
+        treeContainer.classList.remove("open");
+        overlay.classList.remove("open");
+    }
+
+    function showModal() { modal.style.display = "flex"; }
+    function hideModal() { modal.style.display = "none"; }
+
+    function resetForm() {
+        topic.value = "";
+        title.value = "";
+        text.value = "";
+        document.getElementById("tags").value = "";
+    }
+
+    function loadTopics() {
+        api('/notes/tree?user=' + user)
+            .then(r => r.json())
+            .then(tree => {
+                treeList.innerHTML = "";
+                topics.innerHTML = "";
+
+                Object.entries(tree).forEach(([topicName, files]) => {
+
+                    const opt = document.createElement("option");
+                    opt.value = topicName;
+                    topics.appendChild(opt);
+
+                    const li = document.createElement("li");
+                    li.innerText = topicName;
+
+                    li.ondblclick = () => renameTopic(topicName);
+
+                    const ul = document.createElement("ul");
+
+                    files.forEach(file => {
+                        const f = document.createElement("li");
+                        f.innerText = file;
+                        f.onclick = () => loadNote(topicName, file);
+                        ul.appendChild(f);
+                    });
+
+                    li.appendChild(ul);
+                    treeList.appendChild(li);
+                });
+            });
+    }
+
+    function loadNote(topic, file) {
+        api(`/notes/content?user=${user}&topic=${topic}&file=${file}`)
+            .then(r => r.text())
+            .then(full => {
+                const parts = full.split("---");
+                const text = parts.length >= 3 ? parts[2].trim() : full;
+                noteContent.textContent = text;
+
+                currentTopic = topic;
+                currentFile = file;
+
+                editBtn.style.display = "inline-block";
+                deleteBtn.style.display = "inline-block";
+                renameBtn.style.display = "inline-block";
+            });
+    }
+
+    function searchNotes() {
+        alert("Поиск не реализован на backend");
+    }
+
+    function resetSearch() {
+        searchText.value = "";
+        searchTag.value = "";
+        loadTopics();
+    }
+
+    function save() {
+        api("/notes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                user,
+                topic: topic.value,
+                title: title.value,
+                text: text.value,
+                tags: document.getElementById("tags").value
+                    ? document.getElementById("tags").value.split(",")
+                    : []
+            })
+        }).then(() => {
+            resetForm();
+            hideModal();
+            loadTopics();
+            showToast();
+        }).catch(e => alert("Ошибка сохранения: " + e));
+    }
+
+    function renameCurrentNote() {
+        const newName = prompt("Новое имя файла:");
+        if (!newName) return;
+
+        const params = new URLSearchParams({
+            user,
+            topic: currentTopic,
+            oldName: currentFile,
+            newTitle: newName
+        });
+
+        api("/notes/rename", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: params
+        })
+        .then(r => r.text())
+        .then(newFileName => {
+            currentFile = newFileName;
+            loadNote(currentTopic, newFileName);
+            loadTopics();
+            showToast();
+        })
+        .catch(e => alert("Ошибка rename: " + e));
+    }
+
+    function renameTopic(topicName = currentTopic) {
+        const newName = prompt("Новое имя папки:", topicName);
+        if (!newName) return;
+
+        const params = new URLSearchParams({
+            user,
+            oldTopic: topicName,
+            newTopic: newName
+        });
+
+        api("/notes/rename-topic", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: params
+        }).then(() => {
+            loadTopics();
+            showToast();
+        }).catch(e => alert("Ошибка rename topic: " + e));
+    }
+
+    function startEdit() {
+        if (!currentFile) return alert("Выбери заметку");
+        editText.value = noteContent.textContent;
+        editText.dispatchEvent(new Event('input'));
+        noteEditor.style.display = "flex";
+    }
+
+    function cancelEdit() {
+        noteEditor.style.display = "none";
+    }
+
+    function saveEdit() {
+        if (!currentFile) return alert("Нет файла");
+
+        api(`/notes/update?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: editText.value
+        }).then(() => {
+            noteContent.innerText = editText.value;
+            cancelEdit();
+            showToast();
+        }).catch(e => alert("Ошибка обновления: " + e));
+    }
+
+    function deleteNote() {
+        deleteModal.style.display = "flex";
+    }
+
+    function confirmDelete() {
+        if (deleteConfirmInput.value !== "удалить") return;
+
+        api(`/notes/delete?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
+            method: "DELETE"
+        }).then(() => {
+            noteContent.innerText = "Выберите заметку";
+            editBtn.style.display = "none";
+            deleteBtn.style.display = "none";
+            renameBtn.style.display = "none";
+            deleteModal.style.display = "none";
+            loadTopics();
+            showToast();
+        });
+    }
+</script>
+
+</body>
+</html>
