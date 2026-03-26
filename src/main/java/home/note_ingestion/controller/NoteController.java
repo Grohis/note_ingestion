@@ -2,6 +2,8 @@ package home.note_ingestion.controller;
 
 import home.note_ingestion.model.Note;
 import home.note_ingestion.service.NoteService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

@@ -1,5 +1,6 @@
 package home.note_ingestion.storage;
 
+import home.note_ingestion.exception.NotFoundException;
 import home.note_ingestion.model.Note;
 import home.note_ingestion.util.SlugUtil;
 
@@ -100,9 +101,8 @@ public class FileStorage {
             // 🔧 FIX 1: логируем путь
             System.out.println("READ PATH: " + file.toAbsolutePath());
 
-            // 🔧 FIX 2: более понятная ошибка
             if (!Files.exists(file)) {
-                throw new RuntimeException("file not found: " + file.toAbsolutePath());
+                throw new NotFoundException("file not found: " + fileName);
             }
 
             // 🔧 FIX 3: гарантируем UTF-8
@@ -125,7 +125,7 @@ public class FileStorage {
             Path file = root.resolve(user).resolve(topic).resolve(fileName);
 
             if (!Files.exists(file)) {
-                throw new RuntimeException("file not found: " + file.toAbsolutePath()); // 🔧 FIX
+                throw new NotFoundException("file not found: " + fileName);
             }
 
             String existing = Files.readString(file, StandardCharsets.UTF_8);
@@ -165,7 +165,7 @@ public class FileStorage {
 
         try {
             if (!Files.exists(file)) {
-                throw new RuntimeException("file not found: " + file.toAbsolutePath()); // 🔧 FIX
+                throw new NotFoundException("file not found: " + fileName);
             }
 
             Files.delete(file);
@@ -197,7 +197,7 @@ public class FileStorage {
             Path oldPath = dir.resolve(oldName);
 
             if (!Files.exists(oldPath)) {
-                throw new RuntimeException("file not found: " + oldPath.toAbsolutePath()); // 🔧 FIX
+                throw new NotFoundException("file not found: " + oldName);
             }
 
             String slug = SlugUtil.toSlug(newTitle);
@@ -245,7 +245,7 @@ public class FileStorage {
             Path newPath = userDir.resolve(newTopic);
 
             if (!Files.exists(oldPath)) {
-                throw new RuntimeException("topic not found");
+                throw new NotFoundException("topic not found: " + oldTopic);
             }
 
             if (Files.exists(newPath)) {

@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -53,9 +54,6 @@ class UpdateWithOldNameTest {
                 .getResponse()
                 .getContentAsString();
 
-        // (опционально) проверка что имя реально изменилось
-        // можно убрать если не нужно
-        // jakarta.servlet.ServletException: Request processing failed: java.lang.RuntimeException: file not found
         assert !newFile.equals(oldFile);
 
         // STEP 3 — update старым именем → ожидаем 404
@@ -66,7 +64,8 @@ class UpdateWithOldNameTest {
                         .param("file", oldFile)
                         .contentType(MediaType.TEXT_PLAIN)
                         .content("fail"))
-                //.andExpect(status().isNotFound())
-                .andExpect(content().string("file not found"));
+                .andExpect(status().isNotFound())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("file not found")));
+//
     }
 }
