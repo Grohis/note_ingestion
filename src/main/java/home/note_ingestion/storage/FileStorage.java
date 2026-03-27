@@ -151,7 +151,7 @@ public class FileStorage {
             );
 
             log.info("Updating file: user={}, topic={}, file={}", user, topic, fileName);
-            log.info("CONTENT:\n{}", newContent);
+//            log.info("CONTENT:\n{}", newContent);
 
         } catch (IOException e) {
             throw new RuntimeException(e);

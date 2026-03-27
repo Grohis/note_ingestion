@@ -10,7 +10,8 @@
         body {
             margin:0;
             font-family:sans-serif;
-            background:#f5f6f7;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            color: #e2e8f0;
         }
 
 /*        Базовый стиль всех кнопок */
@@ -18,7 +19,7 @@
             padding:10px;
             border:none;
             border-radius:12px;
-            background:#3498db;
+            background:#3b82f6;
             color:white;
             margin:2px;
             cursor:pointer;
@@ -48,8 +49,8 @@
             width:40px;
             padding:10px 6px;
 
-            background:#2c3e50;
-            color:white;
+            background: rgba(30,41,59,0.8);
+            backdrop-filter: blur(10px);
 
             display:flex;
             flex-direction:column;
@@ -84,7 +85,7 @@
 
 /*        Hover для сайдбара */
         #sidebar button:hover {
-            background:rgba(255,255,255,0.15);
+            background:#2563eb;
         }
 
 /*        Правая часть (основная зона) */
@@ -104,16 +105,29 @@
 /*        Панель с деревом заметок */
         #treePanel {
             width:250px;
-            background:white;
+            background: #1e293b;
+            color: #e2e8f0;
             border-right:1px solid #ddd;
             overflow:auto;
             border-radius:12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
 
+        #treePanel.hidden {
+            display: none;
+        }
+
+
+
 /*        Элемент списка */
-        #treePanel li { padding:5px; cursor:pointer; }
-        #treePanel li:hover { background:#eee; }
+        #treePanel li {
+            padding:5px;
+            cursor:pointer;
+        }
+
+        #treePanel li:hover {
+            background:rgba(255,255,255,0.08);
+         }
 
 /*        Правая зона (сама заметка) */
         #notePanel {
@@ -136,7 +150,8 @@
             padding:10px;
             margin-bottom:10px;
 
-            background:#f5f6f7;
+            background: #1e293b;
+            color: #e2e8f0;
             border-radius:12px;
 
             box-shadow: 0 4px 12px rgba(0,0,0,0.06);
@@ -148,7 +163,8 @@
 
 /*        Отображение текста заметки */
         #noteContent {
-            background:white;
+            background: #1e293b;
+            color: #e2e8f0;
             padding:12px;
             border-radius:12px;
             min-height:200px;
@@ -168,6 +184,11 @@
 
 /*        Поле ввода */
         textarea {
+            background:#0f172a;
+            color:#e2e8f0;
+            border:1px solid rgba(255,255,255,0.1);
+            border-radius:10px;
+            padding:10px;
             width:100%;
             min-height:100px;
             resize:none;
@@ -188,7 +209,8 @@
 
 /*        Контент модалки */
         #modalContent, #deleteModal div {
-            background:white;
+            background:#1e293b;
+            color:#e2e8f0;
             padding:20px;
             width:90%;
             max-width:400px;
@@ -215,14 +237,20 @@
             gap:8px;
         }
 
+        #headerRight button {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(6px);
+        }
+
         #settingsMenu {
            display:none;
            position:absolute;
            right:0;
            top:45px;
 
-           background:white;
-           border:1px solid #ddd;
+           background:#1e293b;
+           color:#e2e8f0;
+           border:1px solid rgba(255,255,255,0.1);
            border-radius:12px;
 
            padding:5px;
@@ -282,6 +310,7 @@
 
                         <!-- ЛЕВАЯ ЧАСТЬ -->
                         <div id="headerLeft">
+                            <button onclick="toggleTree()">📂</button>
                             <span id="modeLabel">👁</span>
                         </div>
 
@@ -402,6 +431,8 @@
                 noteContent.style.display = "block";
                 modeLabel.innerText = "👁";
             });
+        treeVisible = false;
+        treePanel.classList.add("hidden");
     }
 
     function startEdit() {
@@ -509,7 +540,7 @@
     }
 
     document.addEventListener("click", (e) => {
-        if (settingsMenu && !settingsMenu.contains(e.target)) {
+        if (!e.target.closest(".settingsWrapper")) {
             settingsMenu.style.display = "none";
         }
     });
@@ -589,6 +620,14 @@ ${body}`;
 
         settingsMenu.style.display =
             settingsMenu.style.display === "block" ? "none" : "block";
+    }
+
+    const settingsMenu = document.getElementById("settingsMenu");
+
+    function toggleTree() {
+       treeVisible = !treeVisible;
+       treePanel.classList.toggle("hidden", !treeVisible);
+       document.querySelector('#headerLeft button').innerText = treeVisible ? "📂" : "📁";
     }
 
 </script>
