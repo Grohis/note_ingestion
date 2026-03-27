@@ -6,62 +6,198 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
-        body { margin:0; font-family:sans-serif; background:#f5f6f7; }
+/*    Базовая конфигурация страницы */
+        body {
+            margin:0;
+            font-family:sans-serif;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            color: #e2e8f0;
+        }
 
+/*        Базовый стиль всех кнопок */
         button {
             padding:10px;
             border:none;
-            border-radius:8px;
-            background:#3498db;
+            border-radius:12px;
+            background:#3b82f6;
             color:white;
             margin:2px;
+            cursor:pointer;
+            transition: all 0.2s ease;
         }
 
-        #deleteBtn { background:#e74c3c; }
+/*        Поведение при наведении */
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
 
-        #topBar {
+/*        Главный контейнер приложения */
+        #app {
+            display:flex;
+            height:100vh;
+             padding-left:80px;
+        }
+
+/*        Левая панель (навигация) */
+        #sidebar {
+            position:fixed;
+            left:10px;
+            top:20px;
+
+
+            width:40px;
+            padding:10px 6px;
+
+            background: rgba(30,41,59,0.8);
+            backdrop-filter: blur(10px);
+
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            gap:10px;
+
+            border-radius:20px;
+            box-shadow:0 10px 25px rgba(0,0,0,0.2);
+
+            z-index:1000;
+
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+/*        Переопределение кнопок внутри сайдбара панель (навигация) */
+        #sidebar button {
+            width:40px;
+            height:40px;
+
+            display:flex;
+            align-items:center;
+            justify-content:center;
+
+            background:transparent;
+            border:none;
+            color:white;
+
+            border-radius:10px;
+            cursor:pointer;
+        }
+
+/*        Hover для сайдбара */
+        #sidebar button:hover {
+            background:#2563eb;
+        }
+
+/*        Правая часть (основная зона) */
+        #content {
+            flex:1;
+            padding:10px;
+            max-width: calc(100vw - 100px);
+            padding-top: 20px;
+        }
+
+/*        Контейнер для дерева + заметки */
+        #notesLayout {
+            display:flex;
+            height:calc(100vh - 40px);
+        }
+
+/*        Панель с деревом заметок */
+        #treePanel {
+            width:250px;
+            background: #1e293b;
+            color: #e2e8f0;
+            border-right:1px solid #ddd;
+            overflow:auto;
+            border-radius:12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        #treePanel.hidden {
+            display: none;
+        }
+
+
+
+/*        Элемент списка */
+        #treePanel li {
+            padding:5px;
+            cursor:pointer;
+        }
+
+        #treePanel li:hover {
+            background:rgba(255,255,255,0.08);
+         }
+
+/*        Правая зона (сама заметка) */
+        #notePanel {
+            flex:1;
+            padding:10px;
+            overflow:hidden;
+            display:flex;
+            flex-direction:column;
+        }
+
+/*        Шапка заметки (кнопки, заголовок) */
+        #noteHeader {
+            position: sticky;
+            top: 0;
+
             display:flex;
             justify-content:space-between;
+            align-items:center;
+
             padding:10px;
+            margin-bottom:10px;
+
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius:12px;
+
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+
+            z-index:10;
+
+            backdrop-filter: blur(6px);
         }
 
-        #treeContainer {
-            position:fixed;
-            left:-260px;
-            top:0;
-            width:250px;
-            height:100%;
-            background:white;
+/*        Отображение текста заметки */
+        #noteContent {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding:12px;
+            border-radius:12px;
+            min-height:200px;
+            white-space:pre-wrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+
+            overflow:auto;
+            flex:1;
+        }
+
+/*        Редактор заметки */
+        #noteEditor {
+            display:none;
+            flex-direction:column;
+            flex:1;
+        }
+
+/*        Поле ввода */
+        textarea {
+            background:#0f172a;
+            color:#e2e8f0;
+            border:1px solid rgba(255,255,255,0.1);
+            border-radius:10px;
             padding:10px;
-            transition:0.3s;
-            z-index:1000;
+            width:100%;
+            min-height:100px;
+            resize:none;
+            box-sizing:border-box;
+            flex:1;
             overflow:auto;
         }
-        #treeContainer.open { left:0; }
 
-        #overlay {
-            position:fixed;
-            inset:0;
-            background:rgba(0,0,0,0.3);
-            display:none;
-        }
-        #overlay.open { display:block; }
-
-        #noteContent {
-            background:white;
-            padding:12px;
-            border-radius:10px;
-            min-height:200px;
-        }
-
-        #noteEditor { display:none; flex-direction:column; }
-
-        textarea, input {
-            width:100%;
-            font-size:16px;
-            margin-top:6px;
-        }
-
+/*        Оверлей (затемнение фона) */
         #modal, #deleteModal {
             display:none;
             position:fixed;
@@ -71,14 +207,17 @@
             align-items:center;
         }
 
+/*        Контент модалки */
         #modalContent, #deleteModal div {
-            background:white;
+            background:#1e293b;
+            color:#e2e8f0;
             padding:20px;
             width:90%;
             max-width:400px;
-            border-radius:10px;
+            border-radius:12px;
         }
 
+/*        Уведомление (success popup) */
         #toast {
             display:none;
             position:fixed;
@@ -90,56 +229,132 @@
             padding:10px;
             border-radius:20px;
         }
+
+/*          Правая часть (кнопки в ряд) */
+        #headerRight {
+            display:flex;
+            align-items:center;
+            gap:8px;
+        }
+
+        #headerRight button {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(6px);
+        }
+
+        #settingsMenu {
+           display:none;
+           position:absolute;
+           right:0;
+           top:45px;
+
+           background:#1e293b;
+           color:#e2e8f0;
+           border:1px solid rgba(255,255,255,0.1);
+           border-radius:12px;
+
+           padding:5px;
+           min-width:160px;
+
+           box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+
+        .settingsWrapper {
+           position: relative;
+        }
     </style>
 </head>
 
 <body>
 
-<div id="topBar">
-    <button onclick="toggleTree()">☰</button>
-    <h3>Мои заметки</h3>
-    <button onclick="showModal()">➕</button>
-</div>
+<div id="app">
 
-<div id="overlay" onclick="closeTree()"></div>
-
-<div style="padding:10px">
-    <div id="treeContainer">
-        <h4>Топики</h4>
-        <ul id="treeList"></ul>
+    <div id="sidebar">
+        <button onclick="showPage('home')">🏠</button>
+        <button onclick="showPage('notes')">📝</button>
+        <button onclick="showPage('tasks')">✅</button>
+        <button onclick="showModal()">➕</button>
     </div>
 
-    <div id="noteContent">Выберите заметку</div>
-
-    <div id="noteEditor">
-        <textarea id="editText"></textarea>
-        <button onclick="saveEdit()">Сохранить</button>
-        <button onclick="cancelEdit()">Отмена</button>
+    <div id="modal">
+        <div id="modalContent">
+            <h3>Новая заметка</h3>
+            <input id="topic" list="topics" placeholder="topic">
+            <datalist id="topics"></datalist>
+            <input id="title" placeholder="title">
+            <input id="tags" placeholder="tags">
+            <textarea id="text"></textarea>
+            <button onclick="save()">Сохранить</button>
+            <button onclick="hideModal()">Отмена</button>
+        </div>
     </div>
 
-    <div>
-        <button id="editBtn" style="display:none" onclick="startEdit()">Редактировать</button>
-        <button id="renameBtn" style="display:none" onclick="renameCurrentNote()">Переименовать</button>
-        <button id="deleteBtn" style="display:none" onclick="deleteNote()">Удалить</button>
-    </div>
-</div>
+    <div id="content">
 
-<!-- modal -->
-<div id="modal">
-    <div id="modalContent">
-        <h3>Новая заметка</h3>
-        <input id="topic" list="topics" placeholder="topic">
-        <datalist id="topics"></datalist>
-        <input id="title" placeholder="title">
-        <textarea id="text" placeholder="text"></textarea>
-        <button onclick="save()">Сохранить</button>
-        <button onclick="hideModal()">Отмена</button>
+        <div id="homePage" class="page">
+            <h2>Главная</h2>
+        </div>
+
+        <div id="notesPage" class="page" style="display:none">
+
+            <div id="notesLayout">
+
+                <div id="treePanel">
+                    <h4>Топики</h4>
+                    <ul id="treeList"></ul>
+                </div>
+
+                <div id="notePanel">
+
+                    <div id="noteHeader">
+
+                        <!-- ЛЕВАЯ ЧАСТЬ -->
+                        <div id="headerLeft">
+                            <button onclick="toggleTree()">📂</button>
+                            <span id="modeLabel">👁</span>
+                        </div>
+
+                        <!-- ПРАВАЯ ЧАСТЬ -->
+                        <div id="headerRight">
+
+                            <button onclick="startEdit()">✏️</button>
+
+                            <div class="settingsWrapper">
+                                <button onclick="toggleSettings(event)">⚙️</button>
+
+                                <div id="settingsMenu">
+                                    <button onclick="renameCurrentNote()">Переименовать</button>
+                                    <button onclick="renameTopic()">Переименовать папку</button>
+                                    <button onclick="deleteNote()">Удалить</button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div id="noteContent">Выберите заметку</div>
+
+                    <div id="noteEditor">
+                        <textarea id="editText"></textarea>
+                        <button onclick="saveEdit()">Сохранить</button>
+                        <button onclick="cancelEdit()">Отмена</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div id="tasksPage" class="page" style="display:none">
+            <h2>Задачи</h2>
+        </div>
+
     </div>
 </div>
 
 <div id="deleteModal">
     <div>
-        <p>Введите "удалить"</p>
+        <p>Напиши "удалить"</p>
         <input id="deleteConfirmInput">
         <button onclick="confirmDelete()">OK</button>
     </div>
@@ -148,68 +363,27 @@
 <div id="toast">OK</div>
 
 <script>
-    const headers = { "X-API-KEY": "123" };
+    const api = (url, options = {}) =>
+        fetch(url, {
+            ...options,
+            headers: {
+                "X-API-KEY": "123",
+                ...(options.headers || {})
+            }
+        }).then(r => {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r;
+        });
 
-    // универсальный fetch
-    function api(url, options = {}) {
-    const mergedHeaders = {
-        "X-API-KEY": "123",
-        ...(options.headers || {})
-    };
+    let user, currentTopic, currentFile, rawNote, currentMeta
 
-    return fetch(url, {
-        ...options,
-        headers: mergedHeaders
-    });
-}
-
-    let user, currentTopic, currentFile;
-
-    const SESSION_TTL = 5 * 60 * 1000;
-
-    /* ===== INIT ===== */
     window.onload = () => {
-        const savedUser = localStorage.getItem("user");
-        const savedTime = localStorage.getItem("user_time");
-        const now = Date.now();
-
-        if (!savedUser || !savedTime || (now - savedTime > SESSION_TTL)) {
-            user = prompt("Введите имя:");
-            localStorage.setItem("user", user);
-            localStorage.setItem("user_time", now);
-        } else {
-            user = savedUser;
-        }
-
+        user = localStorage.getItem("user") || prompt("Введите имя:");
+        localStorage.setItem("user", user);
         api('/user/set?user=' + user, { method: 'POST' });
-
         loadTopics();
     };
 
-    /* ===== UI ===== */
-    function toggleTree() {
-        treeContainer.classList.toggle("open");
-        overlay.classList.toggle("open");
-    }
-    function closeTree() {
-        treeContainer.classList.remove("open");
-        overlay.classList.remove("open");
-    }
-    function showToast() {
-        toast.style.display = "block";
-        setTimeout(() => toast.style.display = "none", 2000);
-    }
-
-    /* ===== MODAL ===== */
-    function showModal() {
-        topic.value = "";
-        title.value = "";
-        text.value = "";
-        modal.style.display = "flex";
-    }
-    function hideModal() { modal.style.display = "none"; }
-
-    /* ===== LOAD ===== */
     function loadTopics() {
         api('/notes/tree?user=' + user)
             .then(r => r.json())
@@ -219,26 +393,19 @@
 
                 Object.entries(tree).forEach(([topicName, files]) => {
 
-                    const option = document.createElement("option");
-                    option.value = topicName;
-                    topics.appendChild(option);
+                    let opt = document.createElement("option");
+                    opt.value = topicName;
+                    topics.appendChild(opt);
 
-                    const li = document.createElement("li");
-                    li.innerText = topicName;
+                    let li = document.createElement("li");
+                    li.innerText = "📁 " + topicName;
 
-                    li.ondblclick = () => renameTopic(topicName);
-
-                    const ul = document.createElement("ul");
+                    let ul = document.createElement("ul");
 
                     files.forEach(file => {
-                        const f = document.createElement("li");
-                        f.innerText = file;
-
-                        f.onclick = () => {
-                            loadNote(topicName, file);
-                            closeTree();
-                        };
-
+                        let f = document.createElement("li");
+                        f.innerText = "📄 " + file;
+                        f.onclick = () => loadNote(topicName, file);
                         ul.appendChild(f);
                     });
 
@@ -248,27 +415,139 @@
             });
     }
 
-    /* ===== NOTE ===== */
     function loadNote(topic, file) {
         api(`/notes/content?user=${user}&topic=${topic}&file=${file}`)
             .then(r => r.text())
-            .then(full => {
+            .then(text => {
+                rawNote = text;
 
-                const parts = full.split("\n---\n");
-                const textOnly = parts.length >= 2 ? parts.slice(1).join("\n---\n").trim() : full;
-
-                noteContent.innerText = textOnly;
-
+                const parsed = parseNote(text);
+                noteContent.textContent = parsed.body;
+                currentMeta = parsed.meta;
                 currentTopic = topic;
                 currentFile = file;
 
-                editBtn.style.display = "inline-block";
-                deleteBtn.style.display = "inline-block";
-                renameBtn.style.display = "inline-block";
+                noteEditor.style.display = "none";
+                noteContent.style.display = "block";
+                modeLabel.innerText = "👁";
+            });
+        treeVisible = false;
+        treePanel.classList.add("hidden");
+    }
+
+    function startEdit() {
+        if (!currentFile) return alert("Выбери заметку");
+
+        const parsed = parseNote(rawNote);
+
+        modeLabel.innerText = "✏️";
+        editText.value = parsed.body;
+        noteContent.style.display = "none";
+        noteEditor.style.display = "flex";
+    }
+
+    function cancelEdit() {
+        modeLabel.innerText = "👁";
+        noteEditor.style.display = "none";
+        noteContent.style.display = "block";
+    }
+
+    function saveEdit() {
+        const newBody = editText.value;
+
+        const fullNote = buildNote(currentMeta || {}, newBody);
+
+        api(`/notes/update?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: fullNote
+        }).then(() => {
+            rawNote = fullNote;
+            const parsed = parseNote(fullNote);
+            noteContent.innerText = parsed.body;
+            currentMeta = parsed.meta;
+
+            noteEditor.style.display = "none";
+            noteContent.style.display = "block";
+
+            modeLabel.innerText = "👁";
+
+            showToast();
+        });
+    }
+
+    function deleteNote() {
+        settingsMenu.style.display = "none";
+        deleteModal.style.display = "flex";
+    }
+
+    function confirmDelete() {
+        if (deleteConfirmInput.value !== "удалить") return;
+
+        api(`/notes/delete?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
+            method: "DELETE"
+        }).then(() => {
+            deleteModal.style.display = "none";
+            noteContent.innerText = "Выберите заметку";
+            currentFile = null;
+            currentTopic = null;
+            currentMeta = null;
+            rawNote = null;
+
+            loadTopics();
+        });
+    }
+
+    function renameCurrentNote() {
+        const newName = prompt("Новое имя:");
+        if (!newName) return;
+
+        api("/notes/rename", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+                user,
+                topic: currentTopic,
+                oldName: currentFile,
+                newTitle: newName
+            })
+        }).then(() => {
+            currentFile = newName;
+            loadTopics();
+            settingsMenu.style.display = "none";
+            return loadNote(currentTopic, newName);
             });
     }
 
-    /* ===== CREATE ===== */
+    function renameTopic() {
+        const newName = prompt("Новое имя папки:", currentTopic);
+        if (!newName) return;
+
+        api("/notes/rename-topic", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+                user,
+                oldTopic: currentTopic,
+                newTopic: newName
+            })
+        }).then(() => {
+            currentTopic = newName;
+            loadTopics();
+            settingsMenu.style.display = "none";
+            return loadNote(currentTopic, currentFile);
+        });
+    }
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".settingsWrapper")) {
+            settingsMenu.style.display = "none";
+        }
+    });
+
+    function showModal() { modal.style.display = "flex"; }
+    function hideModal() { modal.style.display = "none"; }
+
     function save() {
         api("/notes", {
             method: "POST",
@@ -277,85 +556,80 @@
                 user,
                 topic: topic.value,
                 title: title.value,
-                text: text.value
+                text: text.value,
+                tags: tags.value ? tags.value.split(",") : []
             })
         }).then(() => {
-            showToast();
             hideModal();
             loadTopics();
-        });
-    }
-
-    /* ===== EDIT ===== */
-    function startEdit() {
-        editText.value = noteContent.innerText;
-        noteEditor.style.display = "flex";
-    }
-    function cancelEdit() {
-        noteEditor.style.display = "none";
-    }
-    function saveEdit() {
-        api(`/notes/update?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain" },
-            body: editText.value
-        }).then(() => {
-            noteContent.innerText = editText.value;
-            cancelEdit();
             showToast();
         });
     }
 
-    /* ===== RENAME NOTE ===== */
-    function renameCurrentNote() {
-        const newName = prompt("Новое имя:");
-        if (!newName) return;
+     function showPage(page) {
+            document.querySelectorAll(".page").forEach(p => p.style.display = "none");
+            if (page === "home") homePage.style.display = "block";
+            if (page === "notes") notesPage.style.display = "block";
+            if (page === "tasks") tasksPage.style.display = "block";
+        }
 
-        api(`/notes/rename?user=${user}&topic=${currentTopic}&oldName=${currentFile}&newTitle=${encodeURIComponent(newName)}`, {
-            method: "POST"
-        }).then(r => r.text())
-.then(newFileName => {
-    currentFile = newFileName;
-    showToast();
-    loadTopics();
-});
+        function showToast() {
+            toast.style.display = "block";
+            setTimeout(() => toast.style.display = "none", 2000);
+        }
+
+        function parseNote(text) {
+    if (!text.startsWith('---')) {
+        return { meta: {}, body: text };
     }
 
-    /* ===== RENAME TOPIC ===== */
-    function renameTopic(oldTopic) {
-        const newName = prompt("Новое имя папки:");
-        if (!newName) return;
+    const parts = text.split('---');
 
-        api(`/notes/rename-topic?user=${user}&oldTopic=${oldTopic}&newTopic=${encodeURIComponent(newName)}`, {
-            method: "POST"
-        }).then(() => {
-            showToast();
-            loadTopics();
-        });
+    if (parts.length < 3) {
+        return { meta: {}, body: text };
     }
 
-    /* ===== DELETE ===== */
-    function deleteNote() {
-        deleteModal.style.display = "flex";
+    const metaRaw = parts[1].trim();
+    const body = parts.slice(2).join('---').trim();
+
+    const meta = {};
+
+    metaRaw.split('\n').forEach(line => {
+        const [key, ...rest] = line.split(':');
+        if (!key) return;
+        meta[key.trim()] = rest.join(':').trim();
+    });
+
+    return { meta, body };
+}
+
+    function buildNote(meta, body) {
+    return `---
+title: ${meta.title || ""}
+created: ${meta.created || ""}
+tags: ${Array.isArray(meta.tags) ? meta.tags.join(", ") : (meta.tags || "")}
+---
+
+${body}`;
+}
+
+    function toggleSettings(e) {
+        e.stopPropagation();
+
+        if (!currentFile) return alert("Сначала выбери заметку");
+
+        settingsMenu.style.display =
+            settingsMenu.style.display === "block" ? "none" : "block";
     }
-    function confirmDelete() {
-        if (deleteConfirmInput.value !== "удалить") return;
 
-        api(`/notes/delete?user=${user}&topic=${currentTopic}&file=${currentFile}`, {
-            method: "DELETE"
-        }).then(() => {
-            noteContent.innerText = "Выберите заметку";
+    const settingsMenu = document.getElementById("settingsMenu");
 
-            editBtn.style.display = "none";
-            deleteBtn.style.display = "none";
-            renameBtn.style.display = "none";
-
-            deleteModal.style.display = "none";
-
-            showToast();
-            loadTopics();
-        });
+    function toggleTree() {
+       treeVisible = !treeVisible;
+       treePanel.classList.toggle("hidden", !treeVisible);
+       document.querySelector('#headerLeft button').innerText = treeVisible ? "📂" : "📁";
     }
+
 </script>
 
 </body>

@@ -31,7 +31,7 @@ public class NoteFlowTest {
 
     @BeforeEach
     void cleanup() throws Exception {
-        Path root = Paths.get("data");
+        Path root = Paths.get("data/test_user");
         if (Files.exists(root)) {
             Files.walk(root)
                     .sorted(Comparator.reverseOrder())
