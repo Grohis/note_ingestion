@@ -6,75 +6,177 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
-        body { margin:0; font-family:sans-serif; background:#f5f6f7; }
+/*    Базовая конфигурация страницы */
+        body {
+            margin:0;
+            font-family:sans-serif;
+            background:#f5f6f7;
+        }
 
+/*        Базовый стиль всех кнопок */
         button {
             padding:10px;
             border:none;
-            border-radius:8px;
+            border-radius:12px;
             background:#3498db;
             color:white;
             margin:2px;
             cursor:pointer;
+            transition: all 0.2s ease;
         }
 
-        #app { display:flex; height:100vh; }
+/*        Поведение при наведении */
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
 
+/*        Главный контейнер приложения */
+        #app {
+            display:flex;
+            height:100vh;
+             padding-left:80px;
+        }
+
+/*        Левая панель (навигация) */
         #sidebar {
-            width:200px;
+            position:fixed;
+            left:10px;
+            top:20px;
+
+
+            width:40px;
+            padding:10px 6px;
+
             background:#2c3e50;
             color:white;
+
             display:flex;
             flex-direction:column;
-            padding:10px;
+            align-items:center;
+            gap:10px;
+
+            border-radius:20px;
+            box-shadow:0 10px 25px rgba(0,0,0,0.2);
+
+            z-index:1000;
+
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
         }
 
+/*        Переопределение кнопок внутри сайдбара панель (навигация) */
         #sidebar button {
+            width:40px;
+            height:40px;
+
+            display:flex;
+            align-items:center;
+            justify-content:center;
+
             background:transparent;
             border:none;
             color:white;
-            text-align:left;
+
+            border-radius:10px;
+            cursor:pointer;
         }
 
-        #content { flex:1; padding:10px; }
+/*        Hover для сайдбара */
+        #sidebar button:hover {
+            background:rgba(255,255,255,0.15);
+        }
 
-        #notesLayout { display:flex; height:100%; }
+/*        Правая часть (основная зона) */
+        #content {
+            flex:1;
+            padding:10px;
+            max-width: calc(100vw - 100px);
+            padding-top: 20px;
+        }
 
+/*        Контейнер для дерева + заметки */
+        #notesLayout {
+            display:flex;
+            height:calc(100vh - 40px);
+        }
+
+/*        Панель с деревом заметок */
         #treePanel {
             width:250px;
             background:white;
             border-right:1px solid #ddd;
             overflow:auto;
+            border-radius:12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
 
+/*        Элемент списка */
         #treePanel li { padding:5px; cursor:pointer; }
         #treePanel li:hover { background:#eee; }
 
-        #notePanel { flex:1; padding:10px; }
-
-        #noteHeader {
+/*        Правая зона (сама заметка) */
+        #notePanel {
+            flex:1;
+            padding:10px;
+            overflow:hidden;
             display:flex;
-            justify-content:space-between;
-            margin-bottom:10px;
+            flex-direction:column;
         }
 
+/*        Шапка заметки (кнопки, заголовок) */
+        #noteHeader {
+            position: sticky;
+            top: 0;
+
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+
+            padding:10px;
+            margin-bottom:10px;
+
+            background:#f5f6f7;
+            border-radius:12px;
+
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+
+            z-index:10;
+
+            backdrop-filter: blur(6px);
+        }
+
+/*        Отображение текста заметки */
         #noteContent {
             background:white;
             padding:12px;
-            border-radius:10px;
+            border-radius:12px;
             min-height:200px;
             white-space:pre-wrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+
+            overflow:auto;
+            flex:1;
         }
 
-        #noteEditor { display:none; flex-direction:column; }
+/*        Редактор заметки */
+        #noteEditor {
+            display:none;
+            flex-direction:column;
+            flex:1;
+        }
 
+/*        Поле ввода */
         textarea {
             width:100%;
             min-height:100px;
             resize:none;
             box-sizing:border-box;
+            flex:1;
+            overflow:auto;
         }
 
+/*        Оверлей (затемнение фона) */
         #modal, #deleteModal {
             display:none;
             position:fixed;
@@ -84,14 +186,16 @@
             align-items:center;
         }
 
+/*        Контент модалки */
         #modalContent, #deleteModal div {
             background:white;
             padding:20px;
             width:90%;
             max-width:400px;
-            border-radius:10px;
+            border-radius:12px;
         }
 
+/*        Уведомление (success popup) */
         #toast {
             display:none;
             position:fixed;
@@ -102,6 +206,33 @@
             color:white;
             padding:10px;
             border-radius:20px;
+        }
+
+/*          Правая часть (кнопки в ряд) */
+        #headerRight {
+            display:flex;
+            align-items:center;
+            gap:8px;
+        }
+
+        #settingsMenu {
+           display:none;
+           position:absolute;
+           right:0;
+           top:45px;
+
+           background:white;
+           border:1px solid #ddd;
+           border-radius:12px;
+
+           padding:5px;
+           min-width:160px;
+
+           box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+
+        .settingsWrapper {
+           position: relative;
         }
     </style>
 </head>
@@ -114,7 +245,7 @@
         <button onclick="showPage('home')">🏠</button>
         <button onclick="showPage('notes')">📝</button>
         <button onclick="showPage('tasks')">✅</button>
-        <button onclick="showModal()">➕ Новая</button>
+        <button onclick="showModal()">➕</button>
     </div>
 
     <div id="modal">
@@ -148,21 +279,29 @@
                 <div id="notePanel">
 
                     <div id="noteHeader">
-                        <span id="modeLabel">👁</span>
 
-                        <div>
+                        <!-- ЛЕВАЯ ЧАСТЬ -->
+                        <div id="headerLeft">
+                            <span id="modeLabel">👁</span>
+                        </div>
+
+                        <!-- ПРАВАЯ ЧАСТЬ -->
+                        <div id="headerRight">
+
                             <button onclick="startEdit()">✏️</button>
-<!--                            <button onclick="toggleSettings(event)">⚙️</button>-->
+
+                            <div class="settingsWrapper">
+                                <button onclick="toggleSettings(event)">⚙️</button>
+
+                                <div id="settingsMenu">
+                                    <button onclick="renameCurrentNote()">Переименовать</button>
+                                    <button onclick="renameTopic()">Переименовать папку</button>
+                                    <button onclick="deleteNote()">Удалить</button>
+                                </div>
+                            </div>
+
                         </div>
 
-                        <div style="position:relative;">
-                            <button onclick="toggleSettings(event)">⚙️</button>
-                            <div id="settingsMenu" style="display:none; position:absolute; right:0; background:white; border:1px solid #ddd; border-radius:8px;">
-                                <button onclick="renameCurrentNote()">Переименовать</button>
-                                <button onclick="renameTopic()">Переименовать папку</button>
-                                <button onclick="deleteNote()">Удалить</button>
-                            </div>
-                        </div>
                     </div>
 
                     <div id="noteContent">Выберите заметку</div>
