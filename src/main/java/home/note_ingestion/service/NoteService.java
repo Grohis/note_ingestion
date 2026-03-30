@@ -10,10 +10,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+
 @Service
 public class NoteService {
 
-    private final FileStorage storage = new FileStorage();
+    private final FileStorage storage;
+
+    public NoteService(FileStorage storage) {
+        this.storage = storage;
+    }
 
     public void save(Note note) {
         validate(note);
@@ -53,7 +58,7 @@ public class NoteService {
 
     public List<String> listTopics(String user) {
         try {
-            Path userDir = Paths.get("data").resolve(user);
+            Path userDir = storage.getRoot().resolve(user);
             if (!Files.exists(userDir)) return List.of();
 
             try (var stream = Files.list(userDir)) {

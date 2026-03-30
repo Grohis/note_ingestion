@@ -23,13 +23,19 @@ public class ApiKeyFilter implements Filter {
 
         String path = req.getRequestURI();
 
-        // Пропускаем health без авторизации
+        // health без авторизации
         if (path.equals("/health")) {
             chain.doFilter(request, response);
             return;
         }
 
-        // Проверяем только /notes
+        // photos пока без авторизации
+        if (path.startsWith("/photos")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // защита только notes
         if (path.startsWith("/notes")) {
 
             String header = req.getHeader("X-API-KEY");

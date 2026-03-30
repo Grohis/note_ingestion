@@ -5,6 +5,8 @@ import home.note_ingestion.model.Note;
 import home.note_ingestion.util.SlugUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -12,10 +14,20 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class FileStorage {
 
-    private final Path root = Paths.get("data");
+    private final Path root;
     private static final Logger log = LoggerFactory.getLogger(FileStorage.class);
+    public FileStorage(@Value("${app.storage.root:data}") String storageRoot) {
+        this.root = Paths.get(storageRoot);
+    }
+
+    public Path getRoot() {
+        return root;
+    }
 
     public void save(Note note) {
         try {
@@ -284,5 +296,50 @@ public class FileStorage {
         }
 
         return name.endsWith(".md") ? name : name + ".md";
+    }
+
+// Модуль photo
+
+    public Path saveFile(String folder, String fileName, byte[] content) throws IOException {
+        Path dir = root.resolve(folder);
+        Files.createDirectories(dir);
+
+        Path filePath = dir.resolve(fileName);
+        Files.write(filePath, content);
+
+        log.info("Saved file: folder={}, file={}, size={} bytes, path={}",
+                folder, fileName, content.length, filePath);
+
+        return filePath;
+    }
+    public byte[] readFile(String folder, String fileName) throws IOException {
+        Path filePath = root.resolve(folder).resolve(fileName);
+        byte[] content = Files.readAllBytes(filePath);
+        log.info("Read file: folder={}, file={}, size={} bytes, path={}",
+                folder, fileName, content.length, filePath);
+
+        return Files.readAllBytes(filePath);
+    }
+
+    public void deleteFile(String folder, String fileName) throws IOException {
+        Path filePath = root.resolve(folder).resolve(fileName);
+        boolean deleted = Files.deleteIfExists(filePath);
+        log.info("Delete file: folder={}, file={}, path={}, deleted={}",
+                folder, fileName, filePath, deleted);
+        Files.deleteIfExists(filePath);
+    }
+
+
+    public Stream<Path> listFiles(String folder) throws IOException {
+        Path dir = root.resolve(folder);
+
+        if (!Files.exists(dir)) {
+            log.info("List files: folder={} does not exist", folder);
+            return Stream.empty();
+        }
+
+        log.info("List files: folder={}, path={}", folder, dir);
+
+        return Files.list(dir);
     }
 }

@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -30,5 +32,12 @@ public class GlobalExceptionHandler {
         log.error("Internal error", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("internal error");
+    }
+
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<String> handleIo(IOException ex) {
+        log.error("File operation failed", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("File operation error");
     }
 }
