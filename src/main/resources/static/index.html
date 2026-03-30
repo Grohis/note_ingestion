@@ -262,6 +262,38 @@
         .settingsWrapper {
            position: relative;
         }
+
+        #photosLayout {
+            display:flex;
+            height:calc(100vh - 40px);
+        }
+
+        #photosTree {
+            width:250px;
+            background: #1e293b;
+            overflow:auto;
+            border-radius:12px;
+        }
+
+        #photosTree img {
+            border-radius:10px;
+            cursor:pointer;
+            transition:0.2s;
+        }
+
+        #photosTree img:hover {
+            transform:scale(1.05);
+        }
+
+        #photosTree ul {
+            display:flex;
+            flex-wrap:wrap;
+        }
+
+        #photosViewer {
+            flex:1;
+        }
+
     </style>
 </head>
 
@@ -274,6 +306,8 @@
         <button onclick="showPage('notes')">📝</button>
         <button onclick="showPage('tasks')">✅</button>
         <button onclick="showModal()">➕</button>
+        <button onclick="showPage('photos')">📷</button>
+        <button onclick="uploadPhoto()">📤</button>
     </div>
 
     <div id="modal">
@@ -290,65 +324,47 @@
     </div>
 
     <div id="content">
-
         <div id="homePage" class="page">
             <h2>Главная</h2>
         </div>
-
         <div id="notesPage" class="page" style="display:none">
-
             <div id="notesLayout">
-
                 <div id="treePanel">
                     <h4>Топики</h4>
                     <ul id="treeList"></ul>
                 </div>
-
                 <div id="notePanel">
-
                     <div id="noteHeader">
-
                         <!-- ЛЕВАЯ ЧАСТЬ -->
                         <div id="headerLeft">
                             <button onclick="toggleTree()">📂</button>
                             <span id="modeLabel">👁</span>
                         </div>
-
                         <!-- ПРАВАЯ ЧАСТЬ -->
                         <div id="headerRight">
-
                             <button onclick="startEdit()">✏️</button>
-
                             <div class="settingsWrapper">
                                 <button onclick="toggleSettings(event)">⚙️</button>
-
                                 <div id="settingsMenu">
                                     <button onclick="renameCurrentNote()">Переименовать</button>
                                     <button onclick="renameTopic()">Переименовать папку</button>
                                     <button onclick="deleteNote()">Удалить</button>
                                 </div>
                             </div>
-
                         </div>
-
                     </div>
-
                     <div id="noteContent">Выберите заметку</div>
-
                     <div id="noteEditor">
                         <textarea id="editText"></textarea>
                         <button onclick="saveEdit()">Сохранить</button>
                         <button onclick="cancelEdit()">Отмена</button>
                     </div>
-
                 </div>
             </div>
         </div>
-
         <div id="tasksPage" class="page" style="display:none">
             <h2>Задачи</h2>
         </div>
-
     </div>
 </div>
 
@@ -362,7 +378,30 @@
 
 <div id="toast">OK</div>
 
+<div id="photosPage" class="page" style="display:none">
+    <div id="photosLayout">
+        <div id="photosTree"></div>
+        <div id="photosViewer">
+            <img id="photoFull" style="max-width:100%; display:none;">
+        </div>
+    </div>
+</div>
+
 <script>
+
+    window.treeList = document.getElementById("treeList");
+    window.topics = document.getElementById("topics");
+    window.noteContent = document.getElementById("noteContent");
+    window.noteEditor = document.getElementById("noteEditor");
+    window.editText = document.getElementById("editText");
+    window.modeLabel = document.getElementById("modeLabel");
+    window.treePanel = document.getElementById("treePanel");
+    window.deleteModal = document.getElementById("deleteModal");
+    window.deleteConfirmInput = document.getElementById("deleteConfirmInput");
+    window.toast = document.getElementById("toast");
+    window.photosTree = document.getElementById("photosTree");
+    window.photoFull = document.getElementById("photoFull");
+
     const api = (url, options = {}) =>
         fetch(url, {
             ...options,
@@ -375,44 +414,60 @@
             return r;
         });
 
-    let user, currentTopic, currentFile, rawNote, currentMeta
+    let user, currentTopic, currentFile, rawNote, currentMeta, settingsMenu
+    let treeVisible = true
 
     window.onload = () => {
         user = localStorage.getItem("user") || prompt("Введите имя:");
+
+        if (!user) {
+            user = "default";
+        }
         localStorage.setItem("user", user);
         api('/user/set?user=' + user, { method: 'POST' });
+        settingsMenu = document.getElementById("settingsMenu");
         loadTopics();
     };
 
     function loadTopics() {
-        api('/notes/tree?user=' + user)
-            .then(r => r.json())
-            .then(tree => {
-                treeList.innerHTML = "";
-                topics.innerHTML = "";
+    api('/notes/tree?user=' + user)
+        .then(r => r.json())
+        .then(tree => {
+            const treeListEl = document.getElementById("treeList");
+            const topicsEl = document.getElementById("topics");
 
-                Object.entries(tree).forEach(([topicName, files]) => {
+            treeListEl.innerHTML = "";
+            topicsEl.innerHTML = "";
 
-                    let opt = document.createElement("option");
-                    opt.value = topicName;
-                    topics.appendChild(opt);
+            Object.entries(tree).forEach(([topicName, files]) => {
 
-                    let li = document.createElement("li");
-                    li.innerText = "📁 " + topicName;
+                // datalist
+                let opt = document.createElement("option");
+                opt.value = topicName;
+                topicsEl.appendChild(opt);
 
-                    let ul = document.createElement("ul");
+                // topic block
+                let li = document.createElement("li");
+                li.innerText = "📁 " + topicName;
 
-                    files.forEach(file => {
-                        let f = document.createElement("li");
-                        f.innerText = "📄 " + file;
-                        f.onclick = () => loadNote(topicName, file);
-                        ul.appendChild(f);
-                    });
+                let ul = document.createElement("ul");
 
-                    li.appendChild(ul);
-                    treeList.appendChild(li);
+                files.forEach(file => {
+                    let f = document.createElement("li");
+                    f.innerText = "📄 " + file;
+                    f.onclick = () => loadNote(topicName, file);
+                    ul.appendChild(f);
                 });
+
+                li.appendChild(ul);
+                treeListEl.appendChild(li);
             });
+        })
+        .catch(() => alert("Ошибка загрузки дерева заметок"));
+    }
+
+    function uploadPhoto() {
+        alert("Загрузка фото пока не реализована");
     }
 
     function loadNote(topic, file) {
@@ -477,6 +532,7 @@
     }
 
     function deleteNote() {
+        if (!currentFile) return alert("Сначала выбери заметку");
         settingsMenu.style.display = "none";
         deleteModal.style.display = "flex";
     }
@@ -540,6 +596,7 @@
     }
 
     document.addEventListener("click", (e) => {
+        if (!settingsMenu) return;
         if (!e.target.closest(".settingsWrapper")) {
             settingsMenu.style.display = "none";
         }
@@ -567,19 +624,23 @@
     }
 
      function showPage(page) {
-            document.querySelectorAll(".page").forEach(p => p.style.display = "none");
-            if (page === "home") homePage.style.display = "block";
-            if (page === "notes") notesPage.style.display = "block";
-            if (page === "tasks") tasksPage.style.display = "block";
+        document.querySelectorAll(".page").forEach(p => p.style.display = "none");
+        if (page === "home") homePage.style.display = "block";
+        if (page === "notes") notesPage.style.display = "block";
+        if (page === "tasks") tasksPage.style.display = "block";
+        if (page === "photos") {
+            photosPage.style.display = "block";
+            loadPhotos();
         }
+     }
 
-        function showToast() {
-            toast.style.display = "block";
-            setTimeout(() => toast.style.display = "none", 2000);
-        }
+     function showToast() {
+        toast.style.display = "block";
+        setTimeout(() => toast.style.display = "none", 2000);
+    }
 
-        function parseNote(text) {
-    if (!text.startsWith('---')) {
+    function parseNote(text) {
+        if (!text.startsWith('---')) {
         return { meta: {}, body: text };
     }
 
@@ -622,12 +683,47 @@ ${body}`;
             settingsMenu.style.display === "block" ? "none" : "block";
     }
 
-    const settingsMenu = document.getElementById("settingsMenu");
+
 
     function toggleTree() {
        treeVisible = !treeVisible;
        treePanel.classList.toggle("hidden", !treeVisible);
        document.querySelector('#headerLeft button').innerText = treeVisible ? "📂" : "📁";
+    }
+
+    function loadPhoto(topic, file) {
+        photoFull.src = `/photos/file?user=${user}&topic=${topic}&file=${file}`;
+        photoFull.style.display = "block";
+    }
+
+    function loadPhotos() {
+    api(`/photos/tree?user=${user}`)
+        .then(r => r.json())
+        .then(tree => {
+            photosTree.innerHTML = "";
+
+            Object.entries(tree).forEach(([topic, files]) => {
+                let li = document.createElement("li");
+                li.innerText = "📁 " + topic;
+
+                let ul = document.createElement("ul");
+
+                if (files.length === 0) {
+                        ul.innerHTML = "<p>Нет фотографий</p>";
+                } else {
+                files.forEach(file => {
+                    let img = document.createElement("img");
+                    img.src = `/photos/file?user=${user}&topic=${topic}&file=${file}`;
+                    img.style.width = "80px";
+                    img.style.margin = "5px";
+                    img.onclick = () => loadPhoto(topic, file);
+                    ul.appendChild(img);
+                });
+                }
+                li.appendChild(ul);
+                photosTree.appendChild(li);
+            });
+        });
     }
 
 </script>
