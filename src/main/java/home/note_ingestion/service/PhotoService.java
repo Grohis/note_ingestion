@@ -1,6 +1,6 @@
 package home.note_ingestion.service;
 
-import home.note_ingestion.storage.FileStorage;
+import home.note_ingestion.storage.PhotoStorage;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -12,31 +12,41 @@ import java.util.stream.Stream;
 @Service
 public class PhotoService {
 
-    private final FileStorage fileStorage;
+    private final PhotoStorage storage;
 
-    public PhotoService(FileStorage fileStorage) {
-        this.fileStorage = fileStorage;
+    public PhotoService(PhotoStorage storage) {
+        this.storage = storage;
     }
 
-    private static final String FOLDER = "photos";
-
-    public void upload(String fileName, byte[] content) throws IOException {
-        fileStorage.saveFile(FOLDER, fileName, content);
+    public void upload(String folder, String fileName, byte[] data) throws IOException {
+        storage.save(folder, fileName, data);
     }
 
-    public byte[] get(String fileName) throws IOException {
-        return fileStorage.readFile(FOLDER, fileName);
+    public byte[] get(String folder, String fileName) throws IOException {
+        return storage.read(folder, fileName);
     }
 
-    public void delete(String fileName) throws IOException {
-        fileStorage.deleteFile(FOLDER, fileName);
+    public void delete(String folder, String fileName) throws IOException {
+        storage.delete(folder, fileName);
     }
 
-    public List<String> list() throws IOException {
-        try (Stream<Path> stream = fileStorage.listFiles(FOLDER)) {
+    public void rename(String folder, String oldName, String newName) throws IOException {
+        storage.renameFile(folder, oldName, newName);
+    }
+
+    public void renameFolder(String oldFolder, String newFolder) throws IOException {
+        storage.renameFolder(oldFolder, newFolder);
+    }
+
+    public List<String> list(String folder) throws IOException {
+        try (Stream<Path> stream = storage.list(folder)) {
             return stream
-                    .map(path -> path.getFileName().toString())
+                    .map(p -> p.getFileName().toString())
                     .toList();
         }
+    }
+
+    public Path getPath(String folder, String fileName) {
+        return storage.getPath(folder, fileName);
     }
 }

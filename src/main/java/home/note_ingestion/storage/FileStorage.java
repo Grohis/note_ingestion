@@ -297,49 +297,4 @@ public class FileStorage {
 
         return name.endsWith(".md") ? name : name + ".md";
     }
-
-// Модуль photo
-
-    public Path saveFile(String folder, String fileName, byte[] content) throws IOException {
-        Path dir = root.resolve(folder);
-        Files.createDirectories(dir);
-
-        Path filePath = dir.resolve(fileName);
-        Files.write(filePath, content);
-
-        log.info("Saved file: folder={}, file={}, size={} bytes, path={}",
-                folder, fileName, content.length, filePath);
-
-        return filePath;
-    }
-    public byte[] readFile(String folder, String fileName) throws IOException {
-        Path filePath = root.resolve(folder).resolve(fileName);
-        byte[] content = Files.readAllBytes(filePath);
-        log.info("Read file: folder={}, file={}, size={} bytes, path={}",
-                folder, fileName, content.length, filePath);
-
-        return Files.readAllBytes(filePath);
-    }
-
-    public void deleteFile(String folder, String fileName) throws IOException {
-        Path filePath = root.resolve(folder).resolve(fileName);
-        boolean deleted = Files.deleteIfExists(filePath);
-        log.info("Delete file: folder={}, file={}, path={}, deleted={}",
-                folder, fileName, filePath, deleted);
-        Files.deleteIfExists(filePath);
-    }
-
-
-    public Stream<Path> listFiles(String folder) throws IOException {
-        Path dir = root.resolve(folder);
-
-        if (!Files.exists(dir)) {
-            log.info("List files: folder={} does not exist", folder);
-            return Stream.empty();
-        }
-
-        log.info("List files: folder={}, path={}", folder, dir);
-
-        return Files.list(dir);
-    }
 }
